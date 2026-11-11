@@ -1,16 +1,63 @@
-# CLAUDART Insights
+<p align="center"><img src="docs/assets/logo.svg" width="88" height="88" alt=""></p>
 
-Dashboard và CLI chạy cục bộ để xem mức dùng [Claude Code](https://claude.com/claude-code) của chính bạn. Công cụ lưu trữ transcript mà Claude Code giữ trên máy (`~/.claude/projects`), nạp vào SQLite, tính token và chi phí, rồi hiển thị sáu màn hình: Tổng quan, Dự án, Phiên làm việc, Model & subagent, Effort và Hoạt động.
+<h1 align="center">CLAUDART Insights</h1>
+
+<p align="center">Xem token và tiền Claude Code của bạn đi đâu, ngay trên máy bạn.</p>
+
+<p align="center"><a href="README.md">English</a> · <a href="CONTRIBUTING.md">Contributing</a></p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/overview-dark.png">
+  <img src="docs/assets/overview-light.png" alt="Màn hình Tổng quan: output token, chi phí, số phiên và tỉ lệ đọc từ cache trong 30 ngày, kèm biểu đồ theo ngày">
+</picture>
+
+<p align="center"><sub>Mọi con số trên trang này là dữ liệu demo bịa ra, do <code>make demo</code> phục vụ.</sub></p>
+
+Insights lưu trữ transcript mà Claude Code giữ trong `~/.claude/projects`, nạp vào SQLite và tính giá từng request. Sáu màn hình trả lời những gì con số tổng che đi: dự án nào tốn nhất, phiên nào kéo dài, model và subagent nào làm phần việc, và lúc nào prompt cache bị dựng lại vô ích.
 
 Không có gì rời khỏi máy bạn. Server chỉ lắng nghe trên `127.0.0.1`, server và trang web đều không gửi request ra ngoài.
 
-English version: [README.md](README.md)
+## Bạn thấy được gì
 
-## Yêu cầu
+### Cache bị dựng lại
+
+Mỗi lần prompt cache bị dựng lại tốn bao nhiêu và vì sao: phiên mới, nén context, hay nghỉ lâu hơn tuổi thọ của cache.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/cache-dark.png">
+  <img src="docs/assets/cache-light.png" alt="Số lần cache bị dựng lại theo nguyên nhân, kèm chi phí thêm">
+</picture>
+
+### Dự án
+
+Mỗi repository một ô, lớn nhỏ theo chi phí.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/treemap-dark.png">
+  <img src="docs/assets/treemap-light.png" alt="Treemap chi phí theo dự án">
+</picture>
+
+### Model và subagent
+
+Phần việc chia giữa các model, và giữa các agent mà phiên giao việc cho.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/models-dark.png">
+  <img src="docs/assets/models-light.png" alt="Output token theo model, cho luồng chính và cho subagent">
+</picture>
+
+### Phiên làm việc
+
+Mọi cuộc trò chuyện với tiêu đề, thời lượng, chi phí và model, sắp xếp được.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/sessions-dark.png">
+  <img src="docs/assets/sessions-light.png" alt="Bảng phiên làm việc sắp theo chi phí">
+</picture>
+
+## Bắt đầu nhanh
 
 Node.js 25 trở lên.
-
-## Chạy lần đầu
 
 ```bash
 git clone https://github.com/vankhaivn/claudart-insights.git
@@ -18,20 +65,22 @@ cd claudart-insights
 make start
 ```
 
-`make start` cài package, build dashboard và phục vụ tại <http://localhost:4310>. Mở trang sẽ quét transcript vào `data/`; nút Làm mới quét lại. Máy không có `make` thì chạy `npm install` rồi `npm start`.
+Mở <http://localhost:4310>. Lần mở đầu tiên quét transcript vào `data/`; nút làm mới ở chân sidebar quét lại. Máy không có `make` thì chạy `npm install` rồi `npm start`.
 
-## Lệnh dùng hằng ngày
+Muốn xem thử trước khi dùng dữ liệu của mình, `make demo` phục vụ mười tuần dữ liệu bịa ra tại <http://localhost:4311>.
 
-| Target `make` | Lệnh npm / CLI tương ứng | Việc làm |
+## Lệnh
+
+| Target `make` | Lệnh CLI tương ứng | Việc làm |
 | --- | --- | --- |
-| `make` | | Liệt kê các target |
 | `make start` | `npm start` | Build và phục vụ dashboard |
 | `make dev` | `npm run dev` | Như trên, có hot reload |
+| `make demo` | `node test/fixtures/demo.mjs` | Phục vụ dữ liệu bịa ra ở cổng 4311 |
 | `make scan` | `node bin/insights.mjs scan` | Lưu các dòng transcript mới và nạp vào |
 | `make usage DAYS=30 BY=model` | `node bin/insights.mjs usage --days 30 --by model` | Token và chi phí trên terminal; `ARGS="..."` thêm option khác |
 | `make prices` | `node bin/insights.mjs prices` | Đối chiếu bảng giá với bản ghi chi phí của Claude Code |
 
-## CLI
+Chạy `make` không kèm gì để liệt kê các target. CLI đầy đủ:
 
 ```text
 node bin/insights.mjs scan                  lưu trữ các dòng transcript mới và nạp vào database
@@ -44,19 +93,10 @@ node bin/insights.mjs serve [--port n]      dashboard đã build tại http://lo
 
 Các lệnh dạng danh sách nhận `--json`. Với cùng một khoảng ngày và bộ lọc, `usage` và dashboard cho cùng số tổng.
 
-## Cấu hình (tuỳ chọn)
+## Cách hoạt động
 
-Sao chép `insights.config.example.json` thành `insights.config.json` ở thư mục gốc repo. Mọi key đều tuỳ chọn; biến `INSIGHTS_CONFIG` trỏ tới file config ở chỗ khác.
-
-| Key | Mặc định | Ý nghĩa |
-| --- | --- | --- |
-| `providers` | `{ "claude": { "transcripts": "~/.claude/projects" } }` | Các nguồn transcript cần đọc; hiện chỉ biết `claude`, tên khác sẽ báo lỗi |
-| `data` | `data` | Nơi chứa archive và database, tính từ vị trí file config |
-| `port` | `4310` | Cổng dashboard |
-| `timeZone` | múi giờ của hệ thống | Quyết định request thuộc ngày và giờ nào |
-| `prices` | `prices.md` trong repo | Bảng giá |
-
-## Dữ liệu nằm ở đâu
+<details>
+<summary><b>Dữ liệu nằm ở đâu</b></summary>
 
 ```text
 data/
@@ -68,34 +108,59 @@ Archive vẫn giữ transcript sau khi Claude Code xoá nó. `data/` bị Git b�
 
 Dự án của một phiên là thư mục gần nhất, từ thư mục làm việc trở lên, có `.git`; không có thì lấy tên chính thư mục đó.
 
-## Chi phí được tính thế nào
+</details>
+
+<details>
+<summary><b>Chi phí được tính thế nào</b></summary>
 
 Claude Code ghi chi phí cho mỗi phiên; Insights dùng con số đó và chia cho các request của phiên theo token, tính giá của chính ngày hôm đó trong [prices.md](prices.md) (USD cho một triệu token, mỗi dòng ứng với một model và ngày bắt đầu hiệu lực). Phiên không có bản ghi chi phí được ước tính từ bảng giá và được đánh dấu. `prices` và báo cáo của lần quét cho biết chỗ số của Claude Code lệch bảng giá; hãy thêm dòng mới từ ngày giá đổi, đừng sửa dòng cũ.
 
-## Cache bị dựng lại
+Chi phí tính theo giá niêm yết. Với gói thuê bao, đó là hạn mức đã dùng, không phải tiền.
 
-Claude Code giữ cuộc trò chuyện trong prompt cache, nên khoảng 98% input token là lần đọc rẻ với mọi người. Thứ tốn tiền là lần dựng lại: một request ghi phần lớn context vào cache lần nữa, đắt gấp 25 đến 40 lần đọc cache. Một request được tính là dựng lại khi ghi ít nhất 20.000 token vào cache và hơn một nửa tổng số token nó đọc hoặc ghi. Màn hình Hoạt động và lệnh `usage` đếm theo từng nguyên nhân:
+</details>
+
+<details>
+<summary><b>Cache bị dựng lại</b></summary>
+
+Claude Code giữ cuộc trò chuyện trong prompt cache, nên phần lớn input token là lần đọc rẻ. Thứ tốn tiền là lần dựng lại: một request ghi phần lớn context vào cache lần nữa, đắt gấp 25 đến 40 lần đọc cache. Một request được tính là dựng lại khi ghi ít nhất 20.000 token vào cache và hơn một nửa tổng số token nó đọc hoặc ghi. Màn hình Hoạt động và lệnh `usage` đếm theo từng nguyên nhân:
 
 | Nguyên nhân | Ý nghĩa |
 | --- | --- |
 | Đầu phiên | Request đầu tiên của một luồng (cuộc trò chuyện chính hoặc một subagent). Không tránh được |
 | Khi nén context | Có một lần nén context kể từ request trước của luồng |
-| Sau khi nghỉ | Khoảng cách từ request trước của luồng dài hơn tuổi thọ của cache: 1 giờ nếu lần ghi cache gần nhất của luồng có cache 1h, nếu không thì 5 phút. Các lần này chia thành 5 đến 15 phút, 15 đến 60 phút và trên 1 giờ |
+| Sau khi nghỉ | Khoảng cách từ request trước của luồng dài hơn tuổi thọ của cache: 1 giờ nếu lần ghi cache gần nhất của luồng có cache 1h, nếu không thì 5 phút. Chia thành 5 đến 15 phút, 15 đến 60 phút và trên 1 giờ |
 | Khác | Mọi trường hợp còn lại |
 
-Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Màn hình Phiên làm việc có cột "Cache hết hạn": số lần dựng lại sau khi nghỉ trong mỗi phiên.
+Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Cột "Cache hết hạn" ở màn hình Phiên làm việc đếm số lần dựng lại sau khi nghỉ trong mỗi phiên.
 
-Giới hạn: không thể giải thích `khác` từ transcript. Ngưỡng 20.000 token và một nửa là quy ước cố định, không phải số Claude Code báo. Chi phí tính theo giá niêm yết; với gói thuê bao đó là hạn mức đã dùng, không phải tiền. Model không có dòng giá thì không có chi phí thêm, nhưng lần dựng lại vẫn được đếm.
+Không thể giải thích `khác` từ transcript. Ngưỡng 20.000 token và một nửa là quy ước cố định, không phải số Claude Code báo. Model không có dòng giá thì không có chi phí thêm, nhưng lần dựng lại vẫn được đếm.
+
+</details>
+
+<details>
+<summary><b>Cấu hình (tuỳ chọn)</b></summary>
+
+Sao chép `insights.config.example.json` thành `insights.config.json` ở thư mục gốc repo. Mọi key đều tuỳ chọn; biến `INSIGHTS_CONFIG` trỏ tới file config ở chỗ khác.
+
+| Key | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `providers` | `{ "claude": { "transcripts": "~/.claude/projects" } }` | Các nguồn transcript cần đọc; hiện chỉ biết `claude`, tên khác sẽ báo lỗi |
+| `data` | `data` | Nơi chứa archive và database, tính từ vị trí file config |
+| `port` | `4310` | Cổng dashboard |
+| `timeZone` | múi giờ của hệ thống | Quyết định request thuộc ngày và giờ nào |
+| `prices` | `prices.md` trong repo | Bảng giá |
+
+</details>
 
 ## Phát triển
 
 ```bash
-make test        # npm test
-make check       # npm run check: kiểm tra kiểu cho dashboard
-make build       # npm run build: dashboard/dist
+make test
+make check
+make build
 ```
 
-Test chỉ dùng transcript tổng hợp trong thư mục tạm. [CONTRIBUTING.md](CONTRIBUTING.md) mô tả Issue, branch, commit và pull request; [CLAUDE.md](CLAUDE.md) hướng dẫn coding agent làm việc trên bản fork.
+Test, kiểm tra kiểu cho dashboard và build dashboard. Test chỉ dùng transcript tổng hợp trong thư mục tạm. [CONTRIBUTING.md](CONTRIBUTING.md) mô tả Issue, branch, commit và pull request; [CLAUDE.md](CLAUDE.md) hướng dẫn coding agent làm việc trên bản fork.
 
 ## Giấy phép
 
