@@ -1,4 +1,4 @@
-.PHONY: help start dev build scan usage prices test check
+.PHONY: help start dev build demo scan usage prices test check
 
 # make usage DAYS=30 BY=model; ARGS passes any other usage option, e.g. ARGS="--project alpha --json".
 DAYS ?= 14
@@ -21,6 +21,9 @@ dev: node_modules ## Serve the dashboard with hot reload
 
 build: node_modules ## Build the dashboard into dashboard/dist
 	npm run build
+
+demo: build ## Serve made-up data at http://localhost:4311, for screenshots or a first look
+	node test/fixtures/demo.mjs
 
 scan: ## Archive new transcript lines and read them into the database
 	node bin/insights.mjs scan

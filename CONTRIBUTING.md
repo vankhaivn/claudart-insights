@@ -56,7 +56,7 @@ Target `main`, with a Conventional Commit title and this body:
 - **Risks / notes**: compatibility, data or follow-ups;
 - `Closes #<issue>` when it completes one.
 
-Add a screenshot for a visible UI change, taken on synthetic data. Before asking for review, run:
+Add a screenshot for a visible UI change, taken on synthetic data: `make demo` serves the same made-up data the README screenshots use. Before asking for review, run:
 
 ```bash
 git diff --check
