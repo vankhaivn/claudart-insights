@@ -128,7 +128,7 @@ export function App({ extra }: { extra?: Extra }) {
     <DashContext.Provider value={dash}>
       <div className="app">
         <aside className="side">
-          <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />CLAUDART Insights</div>
+          <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />{document.title}</div>
           <div className="navlabel">{t("usage")}</div>
           <nav className="nav">{VIEWS.map(nav)}</nav>
           {extra ? <><div className="navlabel">{labelOf(extra.label, lang)}</div><nav className="nav quiet">{extra.views.map((v) => <button key={v.id} onClick={() => set({ view: v.id })} aria-current={view === v.id ? "page" : undefined}><Icon markup={v.icon} />{labelOf(v.label, lang)}</button>)}</nav></> : null}
