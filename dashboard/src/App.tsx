@@ -42,6 +42,8 @@ async function getJson<R>(url: string, init?: RequestInit): Promise<R> {
 }
 
 type ScanState = { busy: boolean; added?: { sessions: number; records: number }; error?: string };
+type Progress = { reason: "first" | "rebuild" | "update"; done: number; total: number };
+const REASON = { first: "bootFirst", rebuild: "bootRebuild", update: "bootUpdate" } as const;
 
 // `extra` adds a second navigation section whose views get the same context as the built-in ones.
 export function App({ extra }: { extra?: Extra }) {
@@ -89,6 +91,15 @@ export function App({ extra }: { extra?: Extra }) {
   const M = useMemo(() => (payload ? buildModel(payload) : null), [payload]);
   const f = useMemo(() => makeFmt(lang), [lang]);
 
+  // While a scan runs with nothing to show yet, follow its progress over the transcripts.
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const waiting = !M && scan.busy;
+  useEffect(() => {
+    if (!waiting) return setProgress(null);
+    const id = setInterval(() => getJson<Progress | null>("/api/scan/progress").then(setProgress, () => {}), 300);
+    return () => clearInterval(id);
+  }, [waiting]);
+
   const set = useCallback((patch: Partial<UrlState>, opts: { replace?: boolean } = {}) => {
     setUrl((cur) => {
       const next = { ...cur, ...patch };
@@ -105,8 +116,26 @@ export function App({ extra }: { extra?: Extra }) {
     </button>
   );
 
+  const brand = <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />{document.title}</div>;
   if (!M) {
-    return <div className="wrap"><p className="loading">{loadError && !scan.busy ? `${t("loadFail")}: ${scan.error ?? loadError}` : scan.busy ? t("scanning") : t("loading")}</p></div>;
+    const failed = loadError && !scan.busy;
+    const share = progress?.total ? progress.done / progress.total : null;
+    return (
+      <div className="boot" role="status">
+        <div className="boot-in">
+          {brand}
+          {failed ? <>
+            <p className="boot-msg">{t("loadFail")}</p>
+            <p className="boot-err">{scan.error ?? loadError}</p>
+            <button type="button" className="field clearall" onClick={refresh}>{t("retry")}</button>
+          </> : <>
+            <p className="boot-msg">{!scan.busy ? t("loading") : !progress ? t("bootFind") : progress.done === progress.total ? t("bootFinish") : t(REASON[progress.reason])}</p>
+            <div className={`boot-bar${share === null ? " wait" : ""}`}><span style={share === null ? undefined : { width: `${share * 100}%` }} /></div>
+            <p className="boot-count">{progress?.total ? `${f.int(progress.done)} / ${f.int(progress.total)} ${t("transcripts")}` : "\u00a0"}</p>
+          </>}
+        </div>
+      </div>
+    );
   }
 
   const view: View = url.view;
@@ -127,7 +156,7 @@ export function App({ extra }: { extra?: Extra }) {
     <DashContext.Provider value={dash}>
       <div className="app">
         <aside className="side">
-          <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />{document.title}</div>
+          {brand}
           <div className="navlabel">{t("usage")}</div>
           <nav className="nav">{VIEWS.map(nav)}</nav>
           {extra ? <><div className="navlabel">{labelOf(extra.label, lang)}</div><nav className="nav quiet">{extra.views.map((v) => <button key={v.id} onClick={() => set({ view: v.id })} aria-current={view === v.id ? "page" : undefined}><Icon markup={v.icon} />{labelOf(v.label, lang)}</button>)}</nav></> : null}

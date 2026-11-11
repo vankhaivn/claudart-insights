@@ -5,6 +5,8 @@ import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { assistant, sid, user, writeTranscript } from "./fixtures/build.mjs";
 import { makeHome } from "./fixtures/home.mjs";
+import { loadConfig } from "../src/config.mjs";
+import { scan } from "../src/scan.mjs";
 
 const counts = (home) => {
   const db = new DatabaseSync(join(home.data, "usage.db"));
@@ -112,4 +114,22 @@ test("the project is the nearest .git at or above the cwd, else the cwd's own na
   home.run("scan");
   assert.equal(projectsOf(home)[sid(5)], "temp");
   assert.equal(projectsOf(home)[sid(1)], "inner");
+});
+
+test("a scan reports its progress over the transcripts and why it runs", async () => {
+  const home = makeHome();
+  for (const k of [70, 71]) writeTranscript(home.transcripts, "slug", sid(k), [user("2026-11-01T01:00:00Z", "start"), assistant("2026-11-01T01:00:01Z", `m${k}`, {})]);
+  const config = loadConfig(home.config);
+  const run = async () => {
+    const seen = [];
+    await scan(config, { onProgress: (p) => seen.push(p) });
+    return seen;
+  };
+  assert.deepEqual(await run(), [{ reason: "first", done: 0, total: 2 }, { reason: "first", done: 1, total: 2 }, { reason: "first", done: 2, total: 2 }]);
+  assert.equal((await run())[0].reason, "update");
+  // A database left by an older schema is emptied and read again from the archive.
+  const db = new DatabaseSync(config.database);
+  db.prepare("UPDATE meta SET value = '0' WHERE key = 'schema'").run();
+  db.close();
+  assert.deepEqual((await run()).at(-1), { reason: "rebuild", done: 2, total: 2 });
 });

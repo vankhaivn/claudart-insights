@@ -24,9 +24,13 @@ function lineCount(chunk) {
   return n;
 }
 
-export async function scan(config) {
+// onProgress({ reason, done, total }) follows the transcripts read; reason is "first" for a new database, "rebuild" when
+// a schema change emptied it, "update" otherwise.
+export async function scan(config, { onProgress = () => {} } = {}) {
   const providers = Object.entries(config.providers).map(([name, p]) => ({ ...PROVIDERS[name], root: p.transcripts, archive: join(config.archive, name) }));
+  const had = existsSync(config.database);
   const db = openDb(config.database);
+  const reason = db.prepare("SELECT COUNT(*) n FROM files").get().n ? "update" : had ? "rebuild" : "first";
   const mains = new Set(db.prepare("SELECT session_id FROM files WHERE kind = 'main'").all().map((r) => r.session_id));
   const ingesters = new Map(providers.map((p) => [p.name, p.createIngester(db, config.timeZone, (id) => mains.has(id))]));
   const totals = { files: 0, bytes: 0, sessions: 0, records: 0, generations: 0, copied: 0 };
@@ -56,7 +60,8 @@ export async function scan(config) {
   });
   jobs.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : a.mtime - b.mtime));
 
-  for (const { d } of jobs) {
+  for (const [done, { d }] of jobs.entries()) {
+    onProgress({ reason, done, total: jobs.length });
     let file = fileRow(d);
     const gz = archivePath(d.dir, d.rel);
     const ingest = ingesters.get(d.provider);
@@ -149,6 +154,8 @@ export async function scan(config) {
     }
     if (offset > file.offset) totals.files++;
   }
+
+  onProgress({ reason, done: jobs.length, total: jobs.length });
 
   // Other session-folder files; the subagent meta files among them give each subagent its type.
   const copied = new Set();

@@ -43,6 +43,9 @@ test("serve answers the API, scanning only on request, and serves the app for ev
     assert.equal((await scan()).records, 1);
     assert.equal(output((await data()).body), 150);
 
+    // Progress answers at once, and is null while no scan runs.
+    assert.equal(await fetch(`${url}/api/scan/progress`).then((r) => r.json()), null);
+
     // Two scans at once both answer; they run one after the other.
     await Promise.all([scan(), scan()]);
     assert.deepEqual(scans, [2, 1, 0, 0]);
