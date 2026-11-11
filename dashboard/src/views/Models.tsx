@@ -58,15 +58,16 @@ export function Models({ F }: { F: Fact[] }) {
       <div className="grid half">
         <section className="card">
           <header><h2>{t("mainVsSub")}</h2><span className="hint">{t("out")}</span></header>
-          <ul className="legend"><li><i className="solid" />{t("mainThread")}<b>{f.pct(1 - subOut / (all.o || 1))}</b></li><li><i className="faded" />{t("subs")}<b>{f.pct(subOut / (all.o || 1))}</b></li></ul>
-          <div className="rows">{per.map((r) => {
+          <ul className="legend"><li><i className="c0" />{t("mainThread")}<b>{f.pct(1 - subOut / (all.o || 1))}</b></li><li><i className="csub" />{t("subs")}<b>{f.pct(subOut / (all.o || 1))}</b></li></ul>
+          <div className="rows total">{per.map((r) => {
             const main = r.tt.o - r.sub, w = (v: number) => `${(v / (r.tt.o || 1)) * 100}%`;
             return [
               <span key={`n${r.m}`} className="n">{r.n}</span>,
               <span key={`b${r.m}`} className="split" style={{ margin: 0 }}>
-                {main ? <i className={r.c} style={{ width: w(main) }} data-tip={tip(r.n, [[r.c, t("mainThread"), f.cmp(main)]])}>{main / r.tt.o >= 0.14 ? f.pct(main / r.tt.o) : ""}</i> : null}
-                {r.sub ? <i className={`${r.c} fade`} style={{ width: w(r.sub) }} data-tip={tip(r.n, [[r.c, t("subs"), f.cmp(r.sub)]])}>{r.sub / r.tt.o >= 0.14 ? f.pct(r.sub / r.tt.o) : ""}</i> : null}
+                {main ? <i className="c0" style={{ width: w(main) }} data-tip={tip(r.n, [["c0", t("mainThread"), f.cmp(main)]])}>{main / r.tt.o >= 0.14 ? f.pct(main / r.tt.o) : ""}</i> : null}
+                {r.sub ? <i className="csub" style={{ width: w(r.sub) }} data-tip={tip(r.n, [["csub", t("subs"), f.cmp(r.sub)]])}>{r.sub / r.tt.o >= 0.14 ? f.pct(r.sub / r.tt.o) : ""}</i> : null}
               </span>,
+              <span key={`o${r.m}`} className="num">{f.cmp(r.tt.o)}</span>,
             ];
           })}</div>
         </section>

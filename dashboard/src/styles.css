@@ -1,7 +1,7 @@
 :root {
   --page: #f5f5f2; --surface: #fcfcfb; --raised: #ffffff; --ink: #0b0b0b; --ink2: #52514e; --muted: #7a7873;
   --hair: #e4e3dc; --base: #c9c8be; --wash: rgba(11,11,11,.045); --accent: #2a78d6; --accent-ink: #1c5cab;
-  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s0: #b9b8b0; --seq: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s0: #b9b8b0; --sub: #6d4fe8; --seq: #2a78d6;
   --v0: #c9c4fb; --v1: #9d93f5; --v2: #6f5ce6; --v3: #4630c0; --v4: #26177a;
   --good: #0ca30c; --up: #1c5cab; --neg: #d03b3b; --shadow: 0 8px 28px rgba(0,0,0,.10);
   --sb: rgba(11,11,11,.18); --sb-hover: rgba(11,11,11,.34);
@@ -9,7 +9,7 @@
 :root[data-theme="dark"] {
   --page: #0f0f0e; --surface: #1a1a19; --raised: #222221; --ink: #f0efec; --ink2: #c3c2b7; --muted: #94928b;
   --hair: #2c2c2a; --base: #44443f; --wash: rgba(255,255,255,.06); --accent: #3987e5; --accent-ink: #86b6ef;
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s0: #5a5a55; --seq: #3987e5;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s0: #5a5a55; --sub: #7b66f0; --seq: #3987e5;
   --v0: #30286a; --v1: #4e42ae; --v2: #7c6ff0; --v3: #b2abff; --v4: #e4e1ff;
   --good: #0ca30c; --up: #86b6ef; --neg: #e66767; --shadow: 0 8px 28px rgba(0,0,0,.5);
   --sb: rgba(255,255,255,.16); --sb-hover: rgba(255,255,255,.32);
@@ -103,7 +103,7 @@ td .spark { margin: 0; }
 .lv i { width: 9px; height: 9px; border-radius: 3px; }
 .price td { padding-top: 12px; padding-bottom: 12px; } .price td[data-tip]:hover { background: var(--wash); } .price .sub.up { color: var(--ink); font-weight: 600; }
 .x1 { color: var(--ink2); }
-.c1 { background: var(--s1); } .c2 { background: var(--s2); } .c3 { background: var(--s3); } .c4 { background: var(--s4); } .c5 { background: var(--s5); } .c0 { background: var(--s0); }
+.c1 { background: var(--s1); } .c2 { background: var(--s2); } .c3 { background: var(--s3); } .c4 { background: var(--s4); } .c5 { background: var(--s5); } .c0 { background: var(--s0); } .csub { background: var(--sub); }
 .chart { display: grid; grid-template-columns: 44px minmax(0, 1fr); padding-top: 10px; }
 .axis { position: relative; height: 230px; }
 .axis span { position: absolute; right: 8px; transform: translateY(50%); color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -159,7 +159,7 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
 .split { display: flex; gap: 2px; height: 28px; margin: 4px 0 12px; }
 .split i { display: flex; align-items: center; padding: 0 9px; border-radius: 4px; color: #fff; font-size: 12.5px; font-style: normal; font-weight: 600; overflow: hidden; white-space: nowrap; }
-.split i.c4 { color: #0b0b0b; }
+.split i.c4 { color: #0b0b0b; } .split i.c0 { color: var(--ink); }
 .diverge .plot { height: 170px; border-bottom: 0; align-items: stretch; }
 .diverge .axis { height: 170px; }
 .diverge .col { flex-direction: column; justify-content: center; align-items: center; }
@@ -199,11 +199,9 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .sharebar b { text-align: right; font-weight: 600; }
 .sharebar small { color: var(--ink2); font-size: 12.5px; text-align: right; }
 .rows { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr); align-items: center; gap: 10px 14px; }
+.rows.total { grid-template-columns: minmax(64px, auto) minmax(0, 1fr) auto; } .rows .num { color: var(--ink2); font-size: 12.5px; text-align: right; }
 .rows .n { font-weight: 550; white-space: nowrap; }
 /* a subagent share is its model color mixed into the card, so the label inside keeps full contrast */
-.split i.c1.fade { background: color-mix(in srgb, var(--s1) 45%, var(--surface)); } .split i.c2.fade { background: color-mix(in srgb, var(--s2) 45%, var(--surface)); } .split i.c3.fade { background: color-mix(in srgb, var(--s3) 45%, var(--surface)); } .split i.c4.fade { background: color-mix(in srgb, var(--s4) 45%, var(--surface)); } .split i.c5.fade { background: color-mix(in srgb, var(--s5) 45%, var(--surface)); }
-.split i.fade { color: var(--ink); }
-.legend i.solid { background: var(--ink2); } .legend i.faded { background: color-mix(in srgb, var(--ink2) 45%, var(--surface)); }
 
 /* projects: each project's share as a treemap, and the table that compares them */
 .tree { position: relative; }
