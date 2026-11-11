@@ -26,8 +26,9 @@ export function derive(db, config) {
   const firstOwner = db.prepare("SELECT text FROM owner_messages WHERE session_id = ? AND kind = 'typed' ORDER BY ts, line LIMIT 1");
   const lastCost = db.prepare("SELECT * FROM cost_states WHERE file_id = ? ORDER BY line DESC LIMIT 1");
   // The session this file continues or forks: of the sessions owning the requests it repeats, the latest to start.
-  const predecessor = db.prepare(`SELECT f.session_id id FROM repeats p JOIN requests q ON q.message_id = p.message_id
-    JOIN files f ON f.kind = 'main' AND f.session_id = q.session_id
+  // CROSS JOIN keeps the order from the file's few repeats; left to the planner it scanned every file and request per file.
+  const predecessor = db.prepare(`SELECT f.session_id id FROM repeats p CROSS JOIN requests q ON q.message_id = p.message_id
+    CROSS JOIN files f ON f.kind = 'main' AND f.session_id = q.session_id
     WHERE p.file_id = ? AND q.session_id <> ? GROUP BY f.id ORDER BY f.own_first DESC LIMIT 1`);
   const requestsOf = db.prepare("SELECT model, day, input, output, cache_read, cache_write, cache_write_1h FROM requests WHERE session_id = ?");
   const prices = readPrices(config).rows;

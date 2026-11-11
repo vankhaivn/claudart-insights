@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // Bump when the schema changes: the database is then rebuilt from the archive.
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
@@ -12,6 +12,7 @@ CREATE TABLE files(id INTEGER PRIMARY KEY, provider TEXT, path TEXT, kind TEXT, 
   archive_size INTEGER DEFAULT 0, first_ts TEXT, own_first TEXT, own_last TEXT, cwd TEXT, live INTEGER DEFAULT 1,
   UNIQUE(provider, path));
 CREATE TABLE records(uuid TEXT PRIMARY KEY, file_id INTEGER, line INTEGER, type TEXT, ts TEXT);
+CREATE INDEX files_session ON files(session_id);
 CREATE INDEX records_file ON records(file_id);
 CREATE TABLE requests(message_id TEXT PRIMARY KEY, file_id INTEGER, line INTEGER, session_id TEXT, agent_id TEXT,
   ts TEXT, day TEXT, hour INTEGER, model TEXT, family TEXT, effort TEXT, is_sub INTEGER,
