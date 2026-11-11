@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { assistant, cost, sid, touch, user, writeTranscript } from "./fixtures/build.mjs";
 import { makeHome } from "./fixtures/home.mjs";
+import { skillSource } from "../src/providers/claude.mjs";
 
 const rows = (home, sql, ...args) => new DatabaseSync(join(home.data, "usage.db")).prepare(sql).all(...args).map((r) => ({ ...r }));
 
@@ -127,4 +128,56 @@ test("costs, titles, tool calls and subagents", () => {
     { message_id: "m41", family: "opus", is_sub: 0, day: "2026-11-01", hour: 9 },
     { message_id: "m41-sub", family: "haiku", is_sub: 1, day: "2026-11-01", hour: 9 },
   ]);
+});
+
+test("skills the agent called and the owner typed, with the folder each was loaded from", () => {
+  const home = makeHome();
+  const s = sid(50);
+  const call = (ts, id, skill) => assistant(ts, `m-${id}`, {}, { content: [{ type: "tool_use", id, name: "Skill", input: { skill } }] });
+  const result = (ts, id, error = false) => user(ts, [{ type: "tool_result", tool_use_id: id, content: error ? "not allowed" : `Launching skill`, is_error: error }], { toolUseResult: {} });
+  const loaded = (ts, dir, link) => user(ts, [{ type: "text", text: `Base directory for this skill: ${dir}\n\nInstructions` }], { isMeta: true, ...link });
+  const typed = user("2026-11-01T01:00:00Z", "<command-message>review</command-message>\n<command-name>/review</command-name>");
+  const compact = user("2026-11-01T01:30:00Z", "<command-message>compact</command-message>\n<command-name>/compact</command-name>");
+  writeTranscript(home.transcripts, "slug", s, [
+    typed,
+    loaded("2026-11-01T01:00:00Z", "/work/demo/.claude/skills/review", { parentUuid: typed.uuid }),
+    call("2026-11-01T01:00:05Z", "toolu_s1", "review"),
+    result("2026-11-01T01:00:06Z", "toolu_s1"),
+    // Loaded earlier in the session: the host names no folder this time.
+    user("2026-11-01T01:00:06Z", [{ type: "text", text: "Skill /review is already loaded above" }], { isMeta: true, sourceToolUseID: "toolu_s1" }),
+    call("2026-11-01T01:10:00Z", "toolu_s2", "docs:pdf"),
+    result("2026-11-01T01:10:01Z", "toolu_s2"),
+    loaded("2026-11-01T01:10:01Z", "/opt/host/skills-plugin/abc/skills/pdf", { sourceToolUseID: "toolu_s2" }),
+    call("2026-11-01T01:20:00Z", "toolu_s3", "simplify"),
+    result("2026-11-01T01:20:01Z", "toolu_s3"),
+    loaded("2026-11-01T01:20:01Z", "/tmp/host/bundled-skills/2.1.0/abc", { sourceToolUseID: "toolu_s3" }),
+    call("2026-11-01T01:25:00Z", "toolu_s4", "release"),
+    result("2026-11-01T01:25:01Z", "toolu_s4", true),
+    compact,
+  ]);
+  home.run("scan");
+  assert.deepEqual(rows(home, "SELECT name, via, source, is_error FROM skills ORDER BY ts"), [
+    { name: "review", via: "command", source: "project", is_error: 0 },
+    { name: "review", via: "agent", source: null, is_error: 0 },
+    { name: "docs:pdf", via: "agent", source: "plugin", is_error: 0 },
+    { name: "simplify", via: "agent", source: "builtin", is_error: 0 },
+    { name: "release", via: "agent", source: null, is_error: 1 },
+    { name: "compact", via: "command", source: null, is_error: 0 },
+  ]);
+  const usage = JSON.parse(home.run("usage", "--since", "2026-11-01", "--until", "2026-11-01", "--by", "skill", "--json").stdout);
+  assert.deepEqual(usage.groups[0].rows, [
+    { key: "review", source: "project", uses: 2, command: 1, agent: 1, errors: 0, sessions: 1, last: "2026-11-01" },
+    { key: "docs:pdf", source: "plugin", uses: 1, command: 0, agent: 1, errors: 0, sessions: 1, last: "2026-11-01" },
+    { key: "simplify", source: "builtin", uses: 1, command: 0, agent: 1, errors: 0, sessions: 1, last: "2026-11-01" },
+    { key: "release", source: "other", uses: 1, command: 0, agent: 1, errors: 1, sessions: 1, last: "2026-11-01" },
+  ]);
+});
+
+test("a skill's source follows the folder the host loaded it from", () => {
+  const home = "/home/u";
+  assert.equal(skillSource("/home/u/.claude/skills/notes", home), "personal");
+  assert.equal(skillSource("/home/u/code/app/.claude/skills/deploy", home), "project");
+  assert.equal(skillSource("/home/u/.claude/plugins/cache/x/skills/pdf", home), "plugin");
+  assert.equal(skillSource("/var/folders/t/bundled-skills/2.1.0/abc", home), "builtin");
+  assert.equal(skillSource("/home/u/code/app", home), "other");
 });

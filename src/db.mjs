@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // Bump when the schema changes: the database is then rebuilt from the archive.
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const SCHEMA = `
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
@@ -32,6 +32,9 @@ CREATE TRIGGER owner_messages_ad AFTER DELETE ON owner_messages BEGIN
 CREATE TABLE tool_calls(id TEXT PRIMARY KEY, file_id INTEGER, line INTEGER, session_id TEXT, agent_id TEXT,
   ts TEXT, name TEXT, model TEXT, is_error INTEGER);
 CREATE INDEX tool_calls_session ON tool_calls(session_id);
+CREATE TABLE skills(id TEXT PRIMARY KEY, file_id INTEGER, line INTEGER, session_id TEXT, ts TEXT, name TEXT, via TEXT,
+  source TEXT, is_error INTEGER DEFAULT 0);
+CREATE INDEX skills_session ON skills(session_id);
 CREATE TABLE subagents(agent_id TEXT PRIMARY KEY, session_id TEXT, type TEXT, tool_use_id TEXT);
 CREATE TABLE compactions(uuid TEXT PRIMARY KEY, file_id INTEGER, session_id TEXT, ts TEXT);
 CREATE TABLE cost_states(file_id INTEGER, line INTEGER, session_id TEXT, start_ms INTEGER, cost REAL,
@@ -45,7 +48,7 @@ CREATE TABLE sessions(id TEXT PRIMARY KEY, provider TEXT, slug TEXT, cwd TEXT, p
 `;
 
 // Tables holding rows ingested from one transcript file; used when a file starts a new generation.
-export const FILE_TABLES = ["records", "requests", "repeats", "owner_messages", "tool_calls", "compactions", "cost_states", "titles"];
+export const FILE_TABLES = ["records", "requests", "repeats", "owner_messages", "tool_calls", "skills", "compactions", "cost_states", "titles"];
 
 export function openDb(path) {
   mkdirSync(dirname(path), { recursive: true });

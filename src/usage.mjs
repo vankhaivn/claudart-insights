@@ -52,7 +52,7 @@ function spreadTargets(key, reqs) {
   return reqs.filter((r) => r.family === family);
 }
 
-// Rows in the shapes the dashboard's views read: sessions, facts, subagents, tools.
+// Rows in the shapes the dashboard's views read: sessions, facts, subagents, tools, skills.
 export function loadRows(db, config, now = new Date()) {
   const zone = zoner(config.timeZone);
   const minute = new Intl.DateTimeFormat("en-GB", { timeZone: config.timeZone, minute: "2-digit" });
@@ -66,6 +66,7 @@ export function loadRows(db, config, now = new Date()) {
   const owners = new Map(db.prepare("SELECT session_id, COUNT(*) n FROM owner_messages GROUP BY session_id").all().map((r) => [r.session_id, r.n]));
   const compactions = new Map(db.prepare("SELECT session_id, COUNT(*) n FROM compactions GROUP BY session_id").all().map((r) => [r.session_id, r.n]));
   const calls = db.prepare("SELECT session_id, name, COUNT(*) n, SUM(coalesce(is_error, 0)) e FROM tool_calls GROUP BY session_id, name").all();
+  const skillUses = db.prepare("SELECT session_id, name, via, source, is_error, ts FROM skills").all();
   const subs = db.prepare(`SELECT f.agent_id, f.session_id, a.type, a.tool_use_id, (SELECT model FROM tool_calls t WHERE t.id = a.tool_use_id) parent_model
     FROM files f LEFT JOIN subagents a ON a.agent_id = f.agent_id WHERE f.kind = 'sub'`).all();
 
@@ -155,12 +156,42 @@ export function loadRows(db, config, now = new Date()) {
     if (i !== undefined) tools[i][c.name] = [c.n, c.e];
   }
 
+  const { skills, skillSources } = skillsBySession(skillUses, sessions.length, index, zone);
+
   const factList = [...facts.values()];
   const today = zone(now.toISOString()).day;
   return {
-    models: families.map(modelName), projects, sessions, facts: factList, subagents, tools, today,
+    models: families.map(modelName), projects, sessions, facts: factList, subagents, tools, skills, skillSources, today,
     first: factList.reduce((a, f) => (f.d < a ? f.d : a), today), scanned: now.toISOString(),
   };
+}
+
+// Where skills come from, in the order they are listed.
+export const SKILL_SOURCES = ["project", "personal", "plugin", "builtin", "other"];
+
+// Per session, each skill's [typed as a command, called by the agent, failed calls, last day used]; and each skill's source.
+// A call the host loaded no folder for takes the source the same skill shows elsewhere. A typed command counts only
+// when it is a skill: the host loaded one for it, or the agent called a skill of that name.
+function skillsBySession(uses, count, index, zone) {
+  const seen = new Map();
+  for (const u of uses) {
+    const m = seen.get(u.name) ?? seen.set(u.name, new Map()).get(u.name);
+    if (u.source) m.set(u.source, (m.get(u.source) ?? 0) + 1);
+  }
+  const isSkill = new Set(uses.filter((u) => u.source || u.via === "agent").map((u) => u.name));
+  const skillSources = {};
+  for (const name of isSkill) skillSources[name] = mostOf(seen.get(name)) ?? "other";
+  const skills = Array.from({ length: count }, () => ({}));
+  for (const u of uses) {
+    const i = index.get(u.session_id);
+    if (i === undefined || !isSkill.has(u.name)) continue;
+    const r = skills[i][u.name] ?? (skills[i][u.name] = [0, 0, 0, ""]);
+    r[u.via === "command" ? 0 : 1]++;
+    r[2] += u.is_error ? 1 : 0;
+    const day = u.ts ? zone(u.ts).day : "";
+    if (day > r[3]) r[3] = day;
+  }
+  return { skills, skillSources };
 }
 
 // The window and filters of a `usage` call, resolved against the rows.
@@ -199,7 +230,7 @@ export function groupBy(rows, F, by) {
     project: (f) => rows.projects[rows.sessions[f.s].p],
     session: (f) => f.s,
   }[by];
-  if (!keyOf) throw new Error(`--by takes day, model, effort, project, session, hour, tool or subagent, got ${by}`);
+  if (!keyOf) throw new Error(`--by takes day, model, effort, project, session, hour, tool, skill or subagent, got ${by}`);
   const groups = new Map();
   for (const f of F) {
     const k = keyOf(f);
@@ -219,6 +250,23 @@ export function toolRows(rows, F) {
     }
   }
   return [...out.values()].sort((a, b) => b.calls - a.calls);
+}
+
+// Skills used in the sessions that have requests in the window, by source and then most used first.
+export function skillRows(rows, F) {
+  const out = new Map();
+  for (const s of new Set(F.map((f) => f.s))) {
+    for (const [name, [command, agent, errors, last]] of Object.entries(rows.skills[s])) {
+      const r = out.get(name) ?? out.set(name, { key: name, source: rows.skillSources[name], uses: 0, command: 0, agent: 0, errors: 0, sessions: 0, last: "" }).get(name);
+      r.uses += command + agent;
+      r.command += command;
+      r.agent += agent;
+      r.errors += errors;
+      r.sessions++;
+      if (last > r.last) r.last = last;
+    }
+  }
+  return [...out.values()].sort((a, b) => SKILL_SOURCES.indexOf(a.source) - SKILL_SOURCES.indexOf(b.source) || b.uses - a.uses || a.key.localeCompare(b.key));
 }
 
 export function subagentRows(rows, F) {

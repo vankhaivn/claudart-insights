@@ -2,7 +2,7 @@
 // the dashboard without real transcripts. The same seed gives the same data, dated back from today.
 import { spawnSync, spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { priceAt, readPrices, requestCost } from "../../src/prices.mjs";
@@ -25,6 +25,37 @@ const THINGS = ["the checkout flow", "invoice export", "auth middleware", "the s
 const TOOLS = [["Bash", 30], ["Read", 22], ["Edit", 16], ["Grep", 9], ["Write", 5], ["Glob", 5], ["TodoWrite", 4], ["WebFetch", 3], ["WebSearch", 2]];
 const SUBS = [["Explore", 45], ["general-purpose", 30], ["code-reviewer", 15], ["Plan", 10]];
 const MODELS = { opus: "claude-opus-5-5", sonnet: "claude-sonnet-5-5", haiku: "claude-haiku-5-5" };
+// Skills by where they load from; they draw on their own generator so the rest of the data stays as it was.
+const SKILLS = [["deploy", "project", 20], ["review-pr", "project", 14], ["release-notes", "project", 10], ["db-migrate", "project", 8], ["seed-data", "project", 2],
+  ["perf-audit", "project", 1], ["commit-style", "personal", 9], ["standup", "personal", 6], ["changelog", "personal", 2], ["docs:pdf", "plugin", 4], ["docs:xlsx", "plugin", 3],
+  ["code-review", "builtin", 6], ["simplify", "builtin", 5], ["loop", "builtin", 2]];
+let seed2 = 11;
+const rnd2 = () => { seed2 = (seed2 + 0x6d2b79f5) | 0; let t = Math.imul(seed2 ^ (seed2 >>> 15), 1 | seed2); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const pickSkill = () => { let r = rnd2() * SKILLS.reduce((n, x) => n + x[2], 0); for (const x of SKILLS) if ((r -= x[2]) < 0) return x; return SKILLS[0]; };
+const skillDir = ([name, source], cwd) => ({ project: `${cwd}/.claude/skills/${name}`, personal: join(homedir(), ".claude", "skills", name),
+  plugin: `/opt/claude/skills-plugin/demo/skills/${name.split(":")[1]}`, builtin: `/tmp/claude/bundled-skills/2.1.0/${name}` })[source];
+const loadedFrom = (ts, dir, link) => user(ts, [{ type: "text", text: `Base directory for this skill: ${dir}` }], { isMeta: true, ...link });
+
+// Turn some of the main thread's tool calls into skill calls, and start some sessions with a typed skill command.
+function withSkills(recs, cwd) {
+  const out = [];
+  if (rnd2() < 0.35) {
+    const skill = pickSkill(), ts = recs[0].timestamp;
+    const typed = user(ts, `<command-message>${skill[0]}</command-message>\n<command-name>/${skill[0]}</command-name>`, { cwd });
+    out.push(typed, loadedFrom(ts, skillDir(skill, cwd), { parentUuid: typed.uuid, cwd }));
+  }
+  let pending = null;
+  for (const r of recs) {
+    const use = r.type === "assistant" && r.message.content[0]?.type === "tool_use" && r.message.content[0].name !== "Task" ? r.message.content[0] : null;
+    if (use && rnd2() < 0.035) { pending = pickSkill(); use.name = "Skill"; use.input = { skill: pending[0] }; pending = [pending, use.id]; }
+    out.push(r);
+    if (pending && r.type === "user" && r.message.content[0]?.tool_use_id === pending[1]) {
+      out.push(loadedFrom(r.timestamp, skillDir(pending[0], cwd), { sourceToolUseID: pending[1], cwd }));
+      pending = null;
+    }
+  }
+  return out;
+}
 
 const home = mkdtempSync(join(tmpdir(), "insights-demo-"));
 const transcripts = join(home, "projects");
@@ -100,7 +131,7 @@ for (let d = DAYS - 1; d >= 0; d--) {
     const title = `${VERBS[int(0, VERBS.length - 1)]} ${THINGS[int(0, THINGS.length - 1)]}`, total = Object.values(usageAll).reduce((n, u) => n + u.costUSD, 0);
     const end = { ...cost(total, { startTime: start.getTime(), modelUsage: usageAll }), totalAPIDuration: Math.round((r.api + subTool) * 1000), totalToolDuration: Math.round(r.tool * 1000),
       totalLinesAdded: r.edits * int(15, 70), totalLinesRemoved: r.edits * int(2, 14), sessionId: session };
-    writeTranscript(transcripts, slug, session, [...r.recs, { type: "ai-title", aiTitle: title, sessionId: session }, end]);
+    writeTranscript(transcripts, slug, session, [...withSkills(r.recs, cwd), { type: "ai-title", aiTitle: title, sessionId: session }, end]);
   }
 }
 

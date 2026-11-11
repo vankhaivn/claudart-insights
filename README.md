@@ -85,7 +85,7 @@ To look around before pointing it at your own data, `make demo` serves ten weeks
 ```text
 node bin/insights.mjs scan                  archive new transcript lines and ingest them
 node bin/insights.mjs show <session>:<line> print one archived record
-node bin/insights.mjs usage [--days n | --since d --until d] [--by day|model|effort|project|session|hour|tool|subagent]
+node bin/insights.mjs usage [--days n | --since d --until d] [--by day|model|effort|project|session|hour|tool|skill|subagent]
                             [--project name] [--model family] [--effort level]
 node bin/insights.mjs prices                the price table checked against Claude Code's own cost records
 node bin/insights.mjs serve [--port n]      the built dashboard on http://localhost:<port>
@@ -134,6 +134,21 @@ Claude Code keeps your conversation in a prompt cache, so most input tokens are 
 The extra cost of a rebuild is the rewritten tokens priced as cache writes (5m and 1h as recorded) minus the same tokens priced as reads, from the price row in force that day. The Sessions view's "Cache lapses" column counts the idle rebuilds in each session.
 
 `other` cannot be explained from transcripts. The 20,000-token and one-half thresholds are a fixed convention, not something Claude Code reports. A model without a price row has no extra cost, and its rebuilds are counted without one.
+
+</details>
+
+<details>
+<summary><b>Skills</b></summary>
+
+The Activity view and `usage --by skill` count each skill by name: the times you typed it as a slash command and the times the agent called it on its own, with the calls that failed. A slash command counts only when Claude Code loads a skill for it, so built-in commands such as `/compact` are left out. Each skill is listed under where Claude Code loaded it from:
+
+| Source | Folder |
+| --- | --- |
+| Project | `.claude/skills/` in a repository |
+| Personal | `~/.claude/skills/` |
+| Plugin | an installed plugin; its skills are named `plugin:skill` |
+| Built-in | the skills bundled with Claude Code |
+| Other | a folder that matches none of these, or a skill whose folder no transcript records |
 
 </details>
 

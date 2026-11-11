@@ -1,6 +1,6 @@
 import { readDb } from "./db.mjs";
 import { int, minutes, pct, table, usd } from "./format.mjs";
-import { effortOrder, groupBy, loadRows, slice, subagentRows, toolRows, totals, window } from "./usage.mjs";
+import { effortOrder, groupBy, loadRows, skillRows, slice, subagentRows, toolRows, totals, window } from "./usage.mjs";
 
 const TOKENS = [
   ["requests", (r) => int(r.q), "r"],
@@ -49,6 +49,7 @@ export async function usageCommand({ config, options, out }) {
 
   const sections = by.map((b) => {
     if (b === "tool") return { by: b, rows: toolRows(rows, F) };
+    if (b === "skill") return { by: b, rows: skillRows(rows, F) };
     if (b === "subagent") return { by: b, rows: subagentRows(rows, F) };
     const grouped = groupBy(rows, F, b);
     if (b === "session") {
@@ -73,6 +74,9 @@ export async function usageCommand({ config, options, out }) {
   for (const s of sections) {
     let columns;
     if (s.by === "tool") columns = [["tool", (r) => r.key], ["calls", (r) => int(r.calls), "r"], ["errors", (r) => int(r.errors), "r"]];
+    else if (s.by === "skill")
+      columns = [["skill", (r) => r.key], ["source", (r) => r.source], ["uses", (r) => int(r.uses), "r"], ["typed", (r) => int(r.command), "r"], ["by agent", (r) => int(r.agent), "r"],
+        ["errors", (r) => int(r.errors), "r"], ["sessions", (r) => int(r.sessions), "r"], ["last used", (r) => r.last]];
     else if (s.by === "subagent") columns = [["subagent type", (r) => r.key], ["count", (r) => int(r.count), "r"], ["output", (r) => int(r.o), "r"], ["models", (r) => Object.entries(r.models).map(([m, n]) => `${m} ${n}`).join(", ")]];
     else if (s.by === "session")
       columns = [["session", (r) => r.key.slice(0, 8)], ["start", (r) => r.start], ["project", (r) => r.project], ["title", (r) => (r.title.length > 40 ? `${r.title.slice(0, 39)}…` : r.title)],
@@ -86,7 +90,7 @@ export async function usageCommand({ config, options, out }) {
     }
     lines.push(table(s.rows, columns), "");
   }
-  if (!by.some((b) => b === "tool" || b === "subagent")) {
+  if (!by.some((b) => b === "tool" || b === "skill" || b === "subagent")) {
     lines.push(`output tokens per second of API time: ${total.tps === null ? "—" : total.tps.toFixed(1)}`);
     const rebuilt = rebuildLine(total);
     if (rebuilt) lines.push(rebuilt);
