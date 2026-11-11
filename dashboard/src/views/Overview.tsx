@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { byDay, dayAdd, group, sessionRows, slice, slotsOf, totals, type Fact } from "../model.ts";
 import { Disclosure } from "../controls/Disclosure.tsx";
-import { Columns, CostCell, Delta, Empty, Heat, Kpi, Legend, MetricSeg, Mix, Rank, Title, tip, useCostFlags, type Side } from "../ui.tsx";
+import { Columns, CostCell, Delta, Empty, Heat, Kpi, Legend, MetricSeg, Rank, SessionMix, Title, tip, useCostFlags, type Side } from "../ui.tsx";
 
 export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
   const { M, S, filter, t, f, set } = useDash();
@@ -69,7 +69,7 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
               <td><Title title={r.x.title} /><span className="sub ph">{M.projects[r.x.p]} · {f.dur(r.x.dur)}</span></td>
               <td className="o1">{f.startText(r.x)}</td>
               <td className="num o1">{f.dur(r.x.dur)}</td>
-              <td className="o2">{M.models[r.x.parent] ?? ""}<Mix arr={r.mix} /></td>
+              <td className="o2">{M.models[r.x.parent] ?? ""}<SessionMix r={r} /></td>
               <td className="num">{f.cmp(r.o)}</td>
               <td className="num"><CostCell r={r} /></td>
             </tr>

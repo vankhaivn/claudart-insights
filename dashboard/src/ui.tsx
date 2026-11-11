@@ -139,9 +139,18 @@ export function Heat({ F }: { F: Fact[] }) {
 }
 
 // Shares of a total as one thin bar, colored by model.
-export function Mix({ arr, className = "mix", style }: { arr: number[]; className?: string; style?: CSSProperties }) {
+export function Mix({ arr, className = "mix", style, tip: about }: { arr: number[]; className?: string; style?: CSSProperties; tip?: string }) {
   const sum = arr.reduce((a, b) => a + b, 0) || 1;
-  return <span className={className} style={style}>{arr.map((v, k) => (v ? <i key={k} className={`c${k + 1}`} style={{ width: `${(v / sum) * 100}%` }} /> : null))}</span>;
+  return <span className={className} style={style} data-tip={about}>{arr.map((v, k) => (v ? <i key={k} className={`c${k + 1}`} style={{ width: `${(v / sum) * 100}%` }} /> : null))}</span>;
+}
+
+// A session's output tokens per model, the main thread and subagents apart, largest first.
+export function SessionMix({ r }: { r: SessionRow }) {
+  const { M, t, f } = useDash();
+  const sum = r.mix.reduce((a, b) => a + b, 0) || 1;
+  const parts = r.mix.flatMap((v, k) => [{ k, n: v - r.subMix[k], who: t("mainThread") }, { k, n: r.subMix[k], who: t("subs") }]).filter((p) => p.n > 0);
+  parts.sort((a, b) => b.n - a.n);
+  return <Mix arr={r.mix} tip={tip(t("out"), parts.map(({ k, n, who }): TipRow => [`c${k + 1}`, `${M.models[k]} · ${who}`, `${f.cmp(n)} · ${f.pct(n / sum)}`]))} />;
 }
 
 // A session's effort runs in time order, each as wide as its requests.

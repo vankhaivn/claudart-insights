@@ -2,7 +2,7 @@ import { useDash } from "../dash.ts";
 import { mainLevel, sessionRows, type Fact, type SessionRow } from "../model.ts";
 import type { SortKey } from "../state.ts";
 import { Search } from "../controls/Search.tsx";
-import { CostCell, Mix, RunsStrip, Title } from "../ui.tsx";
+import { CostCell, SessionMix, RunsStrip, Title } from "../ui.tsx";
 
 export function Sessions({ F }: { F: Fact[] }) {
   const { M, S, t, f, set, limit, more } = useDash();
@@ -33,7 +33,7 @@ export function Sessions({ F }: { F: Fact[] }) {
             <td><Title title={r.x.title} /><span className="sub ph">{f.startText(r.x)} · {M.projects[r.x.p]}</span></td>
             <td className="num o1">{f.dur(r.x.dur)}</td>
             <td className="num o2">{r.x.owner}</td>
-            <td className="o1">{M.models[r.x.parent] ?? ""}<Mix arr={r.mix} /></td>
+            <td className="o1">{M.models[r.x.parent] ?? ""}<SessionMix r={r} /></td>
             <td className="o2">{r.x.runs.length ? <>{M.efforts[mainLevel(r.x.runs)]}{r.x.runs.length > 1 ? <> <span className="x1">+{r.x.runs.length - 1}</span></> : null}<RunsStrip runs={r.x.runs} /></> : "—"}</td>
             <td className="num o3">{r.x.subs.length || "—"}</td>
             <td className="num o3">{r.lapses || "—"}</td>

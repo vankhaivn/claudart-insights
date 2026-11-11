@@ -1,7 +1,7 @@
 import { useDash } from "../dash.ts";
 import { totals, type Fact } from "../model.ts";
 import { Disclosure } from "../controls/Disclosure.tsx";
-import { Empty, Legend, Mix, Swatch, tip } from "../ui.tsx";
+import { Empty, Legend, Mix, Swatch, tip, type TipRow } from "../ui.tsx";
 
 // The model story, top to bottom: which model the money goes to against the work it does, how much of each
 // model's work subagents did, which models the subagents ran on, and the subagent types.
@@ -88,7 +88,7 @@ export function Models({ F }: { F: Fact[] }) {
         {types.length ? <div className="scroll"><table>
           <thead><tr><th>{t("subs")}</th><th className="num">{t("count")}</th><th>{t("ranOn")}</th><th className="num">{t("out")}</th></tr></thead>
           <tbody>{types.map((r) => (
-            <tr key={r.n}><th className="name">{r.n}</th><td className="num">{r.count}</td><td><Mix arr={r.mix} className="mix wide" style={{ width: 160, marginTop: 6 }} /></td><td className="num">{f.cmp(r.o)}</td></tr>
+            <tr key={r.n}><th className="name">{r.n}</th><td className="num">{r.count}</td><td><Mix arr={r.mix} className="mix wide" style={{ width: 160, marginTop: 6 }} tip={tip(r.n, r.mix.map((v, m): TipRow => [`c${m + 1}`, M.models[m], `${f.int(v)} · ${f.pct(v / (r.count || 1))}`]).filter((_, m) => r.mix[m]))} /></td><td className="num">{f.cmp(r.o)}</td></tr>
           ))}</tbody>
         </table></div> : <Empty />}
       </section>

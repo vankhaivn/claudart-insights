@@ -102,13 +102,13 @@ export function group(F: Fact[], key: (f: Fact) => number, metric: Metric) {
   return new Map([...m].map(([k, v]) => [k, v instanceof Set ? v.size : v]));
 }
 
-export type SessionRow = { s: number; o: number; c: number; cr: number; cw: number; i: number; mix: number[]; lapses: number; x: Session; hit: number };
+export type SessionRow = { s: number; o: number; c: number; cr: number; cw: number; i: number; mix: number[]; subMix: number[]; lapses: number; x: Session; hit: number };
 export function sessionRows(M: Model, F: Fact[]): SessionRow[] {
   const m = new Map<number, Omit<SessionRow, "x" | "hit">>();
   for (const f of F) {
     let r = m.get(f.s);
-    if (!r) m.set(f.s, (r = { s: f.s, o: 0, c: 0, cr: 0, cw: 0, i: 0, mix: M.models.map(() => 0), lapses: 0 }));
-    r.o += f.o; r.c += f.c; r.cr += f.cr; r.cw += f.cw; r.i += f.i; r.mix[f.m] += f.o;
+    if (!r) m.set(f.s, (r = { s: f.s, o: 0, c: 0, cr: 0, cw: 0, i: 0, mix: M.models.map(() => 0), subMix: M.models.map(() => 0), lapses: 0 }));
+    r.o += f.o; r.c += f.c; r.cr += f.cr; r.cw += f.cw; r.i += f.i; r.mix[f.m] += f.o; if (f.sub) r.subMix[f.m] += f.o;
     if (f.rb) r.lapses += f.rb[RB_IDLE];
   }
   return [...m.values()].map((r) => ({ ...r, x: M.sessions[r.s], hit: r.cr / (r.cr + r.cw + r.i || 1) }));
