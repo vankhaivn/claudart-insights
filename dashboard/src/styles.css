@@ -66,9 +66,9 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.015em; }
 .half { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .stack { display: grid; gap: 20px; }
 .card { min-width: 0; padding: 16px 20px 20px; border: 1px solid var(--hair); border-radius: 14px; background: var(--surface); }
-.card > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 28px; margin-bottom: 10px; }
+.card > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 28px; margin-bottom: 14px; }
 .card > header .seg { padding: 2px; } .card > header .seg button { padding: 3px 10px; line-height: 18px; } .card > header .field { height: 28px; }
-h2 { margin: 0; font-size: 14.5px; font-weight: 620; }
+h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
 .hint { color: var(--ink2); font-size: 12.5px; }
 .link { border: 0; background: none; padding: 0; color: var(--accent-ink); cursor: pointer; font-size: 13px; white-space: nowrap; }
 
@@ -141,7 +141,7 @@ thead th[aria-sort] button { color: var(--ink); font-weight: 600; }
 .compare thead th, .wraphead thead th { white-space: normal; text-wrap: balance; min-width: 76px; }
 .flag { margin-left: 2px; color: var(--ink2); font-size: .55em; vertical-align: super; cursor: default; outline-offset: 2px; }
 .num { text-align: right; }
-.name { font-weight: 600; }
+.name { font-weight: 550; }
 .ph { display: none !important; }
 .sub { display: block; margin-top: 2px; color: var(--ink2); font-size: 12.5px; font-weight: 400; }
 .title { min-width: 140px; max-width: 260px; overflow: hidden; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
