@@ -22,7 +22,7 @@ Run `make test` and `make check` after every change; `make build` when the dashb
 | `src/providers/` | One module per transcript source; `claude.mjs` knows the Claude Code format, `index.mjs` lists them |
 | `src/archive.mjs`, `src/scan.mjs` | Append-only copy of each provider's transcripts under `data/archive/<provider>/`, then ingest |
 | `src/db.mjs` | Schema of `data/usage.db`; bump `SCHEMA_VERSION` on any change and the database is rebuilt from the archive |
-| `src/derive.mjs`, `src/usage.mjs`, `src/prices.mjs`, `src/effort.mjs` | Per-session values, usage rows and groupings, cost from `prices.md` |
+| `src/derive.mjs`, `src/usage.mjs`, `src/prices.mjs`, `src/effort.mjs`, `src/rebuilds.mjs` | Per-session values, usage rows and groupings, cost from `prices.md`, cache rebuilds per request |
 | `src/dashboard.mjs`, `src/api.mjs`, `src/serve.mjs` | Rows for the page, the JSON API (`/api/data`, `/api/scan`), the local server |
 | `dashboard/` | Vite + React + TypeScript app; one file per view in `dashboard/src/views/`, strings in `i18n.tsx` (English and Vietnamese) |
 | `dashboard/src/extra.ts`, `dashboard/src/index.ts` | How another app embeds the dashboard with views of its own |

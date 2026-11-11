@@ -2,6 +2,7 @@
 import { familyOf } from "./providers/claude.mjs";
 import { zoner } from "./zone.mjs";
 import { priceAt, priceReport, readPrices, requestCost } from "./prices.mjs";
+import { CAUSES } from "./rebuilds.mjs";
 
 const FAMILY_NAMES = { opus: "Opus", sonnet: "Sonnet", haiku: "Haiku", fable: "Fable" };
 export const modelName = (family) => FAMILY_NAMES[family] ?? family;
@@ -12,6 +13,30 @@ export const effortOrder = (a, b) => {
   const r = (e) => (EFFORTS.includes(e) ? EFFORTS.indexOf(e) : e ? EFFORTS.length : EFFORTS.length + 1);
   return r(a) - r(b) || a.localeCompare(b);
 };
+
+// The rebuild figures of one request as a vector: [count, rewritten tokens, extra cost] per cause in CAUSES order,
+// then the idle gaps from 5 to 15 minutes, from 15 to 60 minutes and over an hour. Facts sum these vectors.
+const RB_GAPS = CAUSES.length * 3;
+const gapBucket = (seconds) => (seconds < 900 ? 0 : seconds <= 3600 ? 1 : 2);
+function rebuildVector(r) {
+  if (!r.rebuild) return null;
+  const v = new Array(RB_GAPS + 3).fill(0);
+  const at = CAUSES.indexOf(r.rebuild) * 3;
+  v[at] = 1;
+  v[at + 1] = r.cache_write;
+  v[at + 2] = r.rebuild_extra ?? 0;
+  if (r.rebuild === "idle") v[RB_GAPS + gapBucket(r.rebuild_gap)] = 1;
+  return v;
+}
+
+// Per cause what the facts hold: { n, tokens, extra }, and for idle the three gap counts.
+export function rebuildTotals(F) {
+  const v = new Array(RB_GAPS + 3).fill(0);
+  for (const f of F) if (f.rb) f.rb.forEach((x, i) => { v[i] += x; });
+  const out = Object.fromEntries(CAUSES.map((c, i) => [c, { n: v[i * 3], tokens: v[i * 3 + 1], extra: v[i * 3 + 2] }]));
+  out.idle.gaps = v.slice(RB_GAPS);
+  return out;
+}
 
 const dayAdd = (day, n) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 const mostOf = (map) => [...map].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -33,7 +58,7 @@ export function loadRows(db, config, now = new Date()) {
   const minute = new Intl.DateTimeFormat("en-GB", { timeZone: config.timeZone, minute: "2-digit" });
   const sessionRows = db.prepare(`SELECT s.*, (SELECT MIN(ts) FROM requests r WHERE r.session_id = s.id) first_req
     FROM sessions s ORDER BY coalesce(s.first_ts, first_req)`).all().filter((s) => s.first_ts || s.first_req);
-  const requests = db.prepare("SELECT session_id, agent_id, ts, day, hour, model, family, effort, is_sub, input, output, thinking, cache_read, cache_write, cache_write_1h FROM requests").all();
+  const requests = db.prepare("SELECT session_id, agent_id, ts, day, hour, model, family, effort, is_sub, input, output, thinking, cache_read, cache_write, cache_write_1h, rebuild, rebuild_gap, rebuild_extra FROM requests").all();
   const prices = readPrices(config).rows;
   // Models whose host cost misses the price table, per session.
   const off = new Map();
@@ -101,12 +126,16 @@ export function loadRows(db, config, now = new Date()) {
       const total = weight.reduce((a, b) => a + b, 0);
       targets.forEach((r, k) => costOf.set(r, (costOf.get(r) ?? 0) + value * (total ? weight[k] / total : 1 / targets.length)));
     }
-    const put = (d, h, family, sub, effort, add) => {
+    const put = (d, h, family, sub, effort, add, rb = null) => {
       const key = `${i}|${d}|${h}|${family}|${sub}|${effort}`;
-      const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0 }).get(key);
+      const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb: null }).get(key);
       for (const [k, v] of Object.entries(add)) f[k] += v;
+      if (rb) {
+        f.rb ??= new Array(rb.length).fill(0);
+        rb.forEach((x, k) => { f.rb[k] += x; });
+      }
     };
-    for (const r of reqs) put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0 });
+    for (const r of reqs) put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0 }, rebuildVector(r));
     // A model the host charged with no request in the transcript lands on the session's first hour.
     for (const [key, value] of unplaced) put(day, hour, key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key), 0, sessions[i].effort, { c: value });
   }
@@ -156,7 +185,7 @@ export function totals(rows, F) {
   const ss = [...sess].map((s) => rows.sessions[s]);
   // Speed counts only sessions whose host record gives API time; a running session has none yet.
   const timed = ss.filter((s) => s.api > 0), api = timed.reduce((n, s) => n + s.api, 0);
-  return { ...a, sessions: sess.size, hit: a.cr / (a.cr + a.cw + a.i || 1), tps: api ? timed.reduce((n, s) => n + s.out, 0) / api : null, costGaps: ss.filter((s) => s.costState !== "ok"),
+  return { ...a, rebuild: rebuildTotals(F), sessions: sess.size, hit: a.cr / (a.cr + a.cw + a.i || 1), tps: api ? timed.reduce((n, s) => n + s.out, 0) / api : null, costGaps: ss.filter((s) => s.costState !== "ok"),
     unpriced: [...new Set(ss.flatMap((s) => s.unpriced))].sort() };
 }
 

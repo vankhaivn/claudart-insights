@@ -1,6 +1,7 @@
 // Per-session values computed after every scan from the ingested rows. Cheap: one pass over sessions.
 import { existsSync } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
+import { markRebuilds } from "./rebuilds.mjs";
 import { zoner } from "./zone.mjs";
 import { missOf, priceAt, readPrices, requestCost, usageCost } from "./prices.mjs";
 
@@ -121,4 +122,5 @@ export function derive(db, config) {
     db.exec("ROLLBACK");
     throw err;
   }
+  markRebuilds(db, prices);
 }

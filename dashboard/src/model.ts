@@ -13,9 +13,11 @@ export type Session = {
   // Models without a price row, and models whose host cost misses the price table, in this session.
   unpriced: string[]; priceOff: string[];
 };
-export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number };
+// rb is null unless a request of the fact rebuilt the cache; else [count, rewritten tokens, extra cost] per cause in
+// CAUSES order, then the idle gaps from 5 to 15 minutes, from 15 to 60 minutes and over an hour (summed over the fact's requests).
+export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number; rb: number[] | null };
 export type Subagent = { s: number; type: number; m: number; parent: number; o: number };
-type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number];
+type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number, number[] | null];
 export type Payload = {
   today: string; scanned: string; models: string[]; projects: string[]; types: string[]; efforts: string[]; transcripts: number;
   sessions: Session[]; facts: RawFact[]; subagents: Subagent[]; tools: Record<string, [number, number]>[];
@@ -27,7 +29,7 @@ export const dayAdd = (day: string, n: number) => new Date(Date.parse(day + "T00
 export const days = (from: string, to: string) => { const out: string[] = []; for (let d = from; d <= to; d = dayAdd(d, 1)) out.push(d); return out; };
 
 export function buildModel(data: Payload) {
-  const facts: Fact[] = data.facts.map(([s, d, h, m, sub, e, q, i, o, cr, cw, th, c]) => ({ s, d, h, m, sub, e, q, i, o, cr, cw, th, c }));
+  const facts: Fact[] = data.facts.map(([s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb]) => ({ s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb }));
   const sumOut = (p: number) => facts.reduce((n, f) => n + (data.sessions[f.s].p === p ? f.o : 0), 0);
   const projectRank = data.projects.map((_, i) => i).sort((a, b) => sumOut(b) - sumOut(a));
   return {
@@ -47,6 +49,17 @@ export type Metric = "out" | "cost" | "sess";
 
 export function slice(M: Model, f: Filter, from = f.from, to = f.to) {
   return M.facts.filter((x) => x.d >= from && x.d <= to && (f.project < 0 || M.sessions[x.s].p === f.project) && (f.model < 0 || x.m === f.model) && (f.effort < 0 || x.e === f.effort));
+}
+
+export const CAUSES = ["start", "compaction", "idle", "other"] as const;
+const RB_IDLE = CAUSES.indexOf("idle") * 3, RB_GAPS = CAUSES.length * 3;
+export type Rebuilds = Record<(typeof CAUSES)[number], { n: number; tokens: number; extra: number }> & { gaps: number[] };
+// What the facts hold per rebuild cause, and the idle ones split by the time since the previous request.
+export function rebuilds(F: Fact[]): Rebuilds {
+  const v = new Array(RB_GAPS + 3).fill(0);
+  for (const f of F) if (f.rb) f.rb.forEach((x, i) => { v[i] += x; });
+  const at = (c: (typeof CAUSES)[number]) => { const i = CAUSES.indexOf(c) * 3; return { n: v[i], tokens: v[i + 1], extra: v[i + 2] }; };
+  return { start: at("start"), compaction: at("compaction"), idle: at("idle"), other: at("other"), gaps: v.slice(RB_GAPS) };
 }
 
 export type Totals = ReturnType<typeof totals>;
@@ -83,13 +96,14 @@ export function group(F: Fact[], key: (f: Fact) => number, metric: Metric) {
   return new Map([...m].map(([k, v]) => [k, v instanceof Set ? v.size : v]));
 }
 
-export type SessionRow = { s: number; o: number; c: number; cr: number; cw: number; i: number; mix: number[]; x: Session; hit: number };
+export type SessionRow = { s: number; o: number; c: number; cr: number; cw: number; i: number; mix: number[]; lapses: number; x: Session; hit: number };
 export function sessionRows(M: Model, F: Fact[]): SessionRow[] {
   const m = new Map<number, Omit<SessionRow, "x" | "hit">>();
   for (const f of F) {
     let r = m.get(f.s);
-    if (!r) m.set(f.s, (r = { s: f.s, o: 0, c: 0, cr: 0, cw: 0, i: 0, mix: M.models.map(() => 0) }));
+    if (!r) m.set(f.s, (r = { s: f.s, o: 0, c: 0, cr: 0, cw: 0, i: 0, mix: M.models.map(() => 0), lapses: 0 }));
     r.o += f.o; r.c += f.c; r.cr += f.cr; r.cw += f.cw; r.i += f.i; r.mix[f.m] += f.o;
+    if (f.rb) r.lapses += f.rb[RB_IDLE];
   }
   return [...m.values()].map((r) => ({ ...r, x: M.sessions[r.s], hit: r.cr / (r.cr + r.cw + r.i || 1) }));
 }

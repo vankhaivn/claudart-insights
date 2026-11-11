@@ -25,6 +25,18 @@ function filters(rows, options) {
   return { project, model, effort };
 }
 
+const tokens = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
+const WHEN = { idle: "after idle", compaction: "at compaction", other: "other", start: "at session start" };
+
+// "cache rebuilt: 59 after idle (12.6M tokens, ~$86 extra), ..."; the cost of a start is not avoidable, so it shows none.
+export function rebuildLine({ rebuild }) {
+  const parts = ["idle", "compaction", "other", "start"].filter((c) => rebuild[c].n).map((c) => {
+    const { n, tokens: t, extra } = rebuild[c];
+    return `${int(n)} ${WHEN[c]} (${tokens(t)} tokens${c === "start" ? "" : `, ~$${extra.toFixed(extra < 10 ? 2 : 0)} extra`})`;
+  });
+  return parts.length ? `cache rebuilt: ${parts.join(", ")}` : null;
+}
+
 export async function usageCommand({ config, options, out }) {
   const db = readDb(config.database);
   const rows = loadRows(db, config);
@@ -74,7 +86,11 @@ export async function usageCommand({ config, options, out }) {
     }
     lines.push(table(s.rows, columns), "");
   }
-  if (!by.some((b) => b === "tool" || b === "subagent")) lines.push(`output tokens per second of API time: ${total.tps === null ? "—" : total.tps.toFixed(1)}`);
+  if (!by.some((b) => b === "tool" || b === "subagent")) {
+    lines.push(`output tokens per second of API time: ${total.tps === null ? "—" : total.tps.toFixed(1)}`);
+    const rebuilt = rebuildLine(total);
+    if (rebuilt) lines.push(rebuilt);
+  }
   if (total.costGaps.length) {
     lines.push(`* cost unknown, incomplete or estimated for ${total.costGaps.length} sessions; their known or estimated part is counted:`);
     const why = { unknown: "no cost record and no price for a model", incomplete: "host marked cost incomplete", estimated: "no cost record; estimated from prices.md" };

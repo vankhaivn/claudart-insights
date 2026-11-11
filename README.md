@@ -72,6 +72,21 @@ A session's project is the nearest folder at or above its working directory that
 
 Claude Code records a cost per session; Insights uses that figure and spreads it over the session's requests by their tokens priced on their own day from [prices.md](prices.md) (USD per million tokens, one row per model and start date). A session without a cost record is estimated from the table and marked as such. `prices` and the scan report show where Claude Code's figures and the table disagree; add a row from the day a price changes and never edit an old row.
 
+## Cache rebuilds
+
+Claude Code keeps your conversation in a prompt cache, so about 98% of the input tokens are cheap reads for everyone. What costs money is a rebuild: a request that writes most of the context into the cache again, 25 to 40 times the price of reading it. A request is a rebuild when it writes at least 20,000 tokens to the cache and more than half of everything it read or wrote. The Activity view and `usage` count them per cause:
+
+| Cause | Meaning |
+| --- | --- |
+| At session start | The first request of a thread (the main conversation, or one subagent). Unavoidable |
+| At compaction | A compaction happened since the thread's previous request |
+| After idle | The gap since the thread's previous request is longer than the cache lives: 1 hour if the thread's latest cache write included 1h cache, otherwise 5 minutes. Idle rebuilds are split into 5 to 15 minutes, 15 to 60 minutes and over an hour |
+| Other | Anything else |
+
+The extra cost of a rebuild is the rewritten tokens priced as cache writes (5m and 1h as recorded) minus the same tokens priced as reads, from the price row in force that day. The Sessions view has a "Cache lapses" column: the idle rebuilds in each session.
+
+Limits: `other` cannot be explained from transcripts. The 20,000-token and one-half thresholds are a fixed convention, not something Claude Code reports. Cost is list price; on a subscription it is quota spent, not money. A model without a price row has no extra cost, and the rebuild is counted without one.
+
 ## Development
 
 ```bash

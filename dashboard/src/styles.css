@@ -122,7 +122,7 @@ td .spark { margin: 0; }
 .rank { display: grid; grid-template-columns: minmax(84px, auto) minmax(0, 1fr) auto; align-items: center; gap: 9px 12px; }
 .rank .n { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 .rank .n i { display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 3px; }
-.rank .b { height: 8px; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 2px; }
+.rank .b { display: block; height: 8px; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 2px; }
 .rank .t { height: 8px; border-radius: 4px; background: var(--wash); }
 .rank .val { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rank .val small { margin-left: 6px; color: var(--ink2); font-size: 12px; }
@@ -138,7 +138,7 @@ th:last-child, td:last-child { padding-right: 10px; }
 thead th { padding-top: 0; padding-bottom: 8px; color: var(--ink2); font-size: 12.5px; font-weight: 500; vertical-align: bottom; border-bottom: 1px solid var(--base) !important; }
 thead th button { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
 thead th[aria-sort] button { color: var(--ink); font-weight: 600; }
-.compare thead th { white-space: normal; text-wrap: balance; min-width: 76px; }
+.compare thead th, .wraphead thead th { white-space: normal; text-wrap: balance; min-width: 76px; }
 .flag { margin-left: 2px; color: var(--ink2); font-size: .55em; vertical-align: super; cursor: default; outline-offset: 2px; }
 .num { text-align: right; }
 .name { font-weight: 600; }
@@ -269,6 +269,7 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 
 @media (max-width: 1400px) { .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } .kpis > * { grid-column: span 2; } .kpis > :nth-child(-n+2) { grid-column: span 3; } }
 @media (max-width: 1400px) { .o3 { display: none; } .filters { gap: 8px; } .pick .pv { max-width: 112px; } .range .pv { max-width: none; } .filters .seg button { padding: 5px 7px; } }
+@media (max-width: 1500px) { .wraphead .o3 { display: none; } }
 @media (max-width: 1060px) { .two, .half { grid-template-columns: minmax(0, 1fr); } .o2 { display: none; } }
 @media (max-width: 880px) {
   .app { display: block; }

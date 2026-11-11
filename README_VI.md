@@ -72,6 +72,21 @@ Dự án của một phiên là thư mục gần nhất, từ thư mục làm vi
 
 Claude Code ghi chi phí cho mỗi phiên; Insights dùng con số đó và chia cho các request của phiên theo token, tính giá của chính ngày hôm đó trong [prices.md](prices.md) (USD cho một triệu token, mỗi dòng ứng với một model và ngày bắt đầu hiệu lực). Phiên không có bản ghi chi phí được ước tính từ bảng giá và được đánh dấu. `prices` và báo cáo của lần quét cho biết chỗ số của Claude Code lệch bảng giá; hãy thêm dòng mới từ ngày giá đổi, đừng sửa dòng cũ.
 
+## Cache bị dựng lại
+
+Claude Code giữ cuộc trò chuyện trong prompt cache, nên khoảng 98% input token là lần đọc rẻ với mọi người. Thứ tốn tiền là lần dựng lại: một request ghi phần lớn context vào cache lần nữa, đắt gấp 25 đến 40 lần đọc cache. Một request được tính là dựng lại khi ghi ít nhất 20.000 token vào cache và hơn một nửa tổng số token nó đọc hoặc ghi. Màn hình Hoạt động và lệnh `usage` đếm theo từng nguyên nhân:
+
+| Nguyên nhân | Ý nghĩa |
+| --- | --- |
+| Đầu phiên | Request đầu tiên của một luồng (cuộc trò chuyện chính hoặc một subagent). Không tránh được |
+| Khi nén context | Có một lần nén context kể từ request trước của luồng |
+| Sau khi nghỉ | Khoảng cách từ request trước của luồng dài hơn tuổi thọ của cache: 1 giờ nếu lần ghi cache gần nhất của luồng có cache 1h, nếu không thì 5 phút. Các lần này chia thành 5 đến 15 phút, 15 đến 60 phút và trên 1 giờ |
+| Khác | Mọi trường hợp còn lại |
+
+Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Màn hình Phiên làm việc có cột "Cache hết hạn": số lần dựng lại sau khi nghỉ trong mỗi phiên.
+
+Giới hạn: không thể giải thích `khác` từ transcript. Ngưỡng 20.000 token và một nửa là quy ước cố định, không phải số Claude Code báo. Chi phí tính theo giá niêm yết; với gói thuê bao đó là hạn mức đã dùng, không phải tiền. Model không có dòng giá thì không có chi phí thêm, nhưng lần dựng lại vẫn được đếm.
+
 ## Phát triển
 
 ```bash
