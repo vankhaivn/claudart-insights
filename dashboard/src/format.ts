@@ -16,7 +16,8 @@ export function makeFmt(lang: "vi" | "en") {
   return {
     locale: loc, cmp, int, usd, pct, dshort,
     month: (d: string) => new Intl.DateTimeFormat(loc, { month: "short", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z")),
-    dur: (m: number) => (m >= 60 ? Math.floor(m / 60) + "h " + String(Math.round(m % 60)).padStart(2, "0") + "m" : Math.round(m) + "m"),
+    // Minutes rounded first, so 59.6 reads 1h 00m, not 0h 60m or 60m.
+    dur: (m: number) => { const r = Math.round(m); return r >= 60 ? Math.floor(r / 60) + "h " + String(r % 60).padStart(2, "0") + "m" : r + "m"; },
     fmt: (metric: Metric, v: number) => (metric === "cost" ? usd(v) : metric === "sess" ? int(v) : cmp(v)),
     usd3: (n: number) => "$" + new Intl.NumberFormat(loc, { minimumFractionDigits: n < 1 ? 3 : 2, maximumFractionDigits: n < 1 ? 3 : 2 }).format(n),
     dec: (n: number) => new Intl.NumberFormat(loc, { maximumFractionDigits: 1 }).format(n),
