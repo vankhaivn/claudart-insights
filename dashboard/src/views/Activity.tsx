@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { dayAdd, rebuilds, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
-import { Columns, Delta, Empty, Kpi, tip } from "../ui.tsx";
+import { Columns, Delta, Empty, Info, Kpi, tip } from "../ui.tsx";
 
 // What the agent did: time on the model and on tools, owner turns, lines and compactions against the window
 // before; working time per day beside lines per day; and tool calls with their failed part.
@@ -91,12 +91,18 @@ function Rebuilds({ F }: { F: Fact[] }) {
   return (
     <div className="grid half">
       <section className="card">
-        <header><h2>{t("rebuilt")}</h2><span className="hint">{f.int(count)}</span></header>
+        <header>
+          <div className="ttl"><h2>{t("rebuilt")}</h2><Info label={t("howToRead")}>
+            <p>{t("rbInfo")}</p>
+            <ul>{rows.map(([c, label, def]) => <li key={c}><b>{label}</b>: {def}</li>)}</ul>
+          </Info></div>
+          <span className="hint">{f.int(count)}</span>
+        </header>
         {count ? <div className="scroll"><table>
           <thead><tr><th /><th className="num">{t("count")}</th><th className="num">{t("rbTokens")}</th><th className="num">{t("rbExtra")}</th></tr></thead>
-          <tbody>{rows.map(([c, label, def]) => (
+          <tbody>{rows.map(([c, label]) => (
             <tr key={c}>
-              <th className="name" data-tip={tip(def, [])}>{label}</th>
+              <th className="name">{label}</th>
               <td className="num">{f.int(r[c].n)}</td>
               <td className="num">{r[c].n ? f.cmp(r[c].tokens) : "—"}</td>
               <td className="num">{c === "start" || !r[c].n ? "—" : f.usd(r[c].extra)}</td>
@@ -108,7 +114,7 @@ function Rebuilds({ F }: { F: Fact[] }) {
         <header><h2>{t("idleGap")}</h2><span className="hint">{t("rbIdle")}: {f.int(r.idle.n)}</span></header>
         {r.idle.n ? <div className="rank">{gaps.map((label, k) => [
           <span key={`n${k}`} className="n">{label}</span>,
-          <span key={`t${k}`} className="t"><span className="b" style={{ width: `${(r.gaps[k] / gmax) * 100}%` }} /></span>,
+          <span key={`t${k}`} className="t">{r.gaps[k] ? <span className="b" style={{ width: `${(r.gaps[k] / gmax) * 100}%` }} /> : null}</span>,
           <span key={`v${k}`} className="val">{f.int(r.gaps[k])}</span>,
         ])}</div> : <Empty />}
       </section>

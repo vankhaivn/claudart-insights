@@ -1,5 +1,6 @@
 // Pieces the views share: charts, ranked bars, the hour heatmap, mixes, cost cells and the notes on cost.
 import type { CSSProperties, ReactNode } from "react";
+import { usePopover } from "./controls/popover.tsx";
 import { useDash } from "./dash.ts";
 import type { Fact, Metric, Run, SessionRow } from "./model.ts";
 
@@ -188,3 +189,16 @@ export function useCostFlags(F: Fact[]): TipRow[] {
 }
 
 export const heatStyle = m;
+
+// A small (i) beside a card title that opens a short note on how to read the card; closes like the filter popovers.
+export function Info({ label, children }: { label: string; children: ReactNode }) {
+  const p = usePopover();
+  return (
+    <div className="ctl info" ref={p.root}>
+      <button ref={p.trigger} type="button" className="ib" aria-expanded={p.open} aria-label={label} onClick={() => p.setOpen(!p.open)}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" /><path d="M8 7.2v3.8M8 4.9v.1" /></svg>
+      </button>
+      {p.open ? <div ref={p.pop} className="pop note" style={p.place} role="dialog" aria-label={label}>{children}</div> : null}
+    </div>
+  );
+}
