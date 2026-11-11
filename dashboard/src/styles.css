@@ -141,23 +141,15 @@ thead th[aria-sort] button { color: var(--ink); font-weight: 600; }
 .compare thead th { white-space: normal; text-wrap: balance; min-width: 76px; }
 .flag { margin-left: 2px; color: var(--ink2); font-size: .55em; vertical-align: super; cursor: default; outline-offset: 2px; }
 .num { text-align: right; }
-td.wrapok, th.wrapok { white-space: normal; }
 .name { font-weight: 600; }
 .ph { display: none !important; }
 .sub { display: block; margin-top: 2px; color: var(--ink2); font-size: 12.5px; font-weight: 400; }
 .title { min-width: 140px; max-width: 260px; overflow: hidden; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.tag { display: inline-block; white-space: nowrap; margin-left: 8px; padding: 1px 7px; border: 1px solid var(--base); border-radius: 999px; color: var(--ink2); font-size: 11.5px; font-weight: 500; }
-.dim td, .dim .name { color: var(--ink2); }
 tbody tr.go { cursor: pointer; }
 tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .mix { display: flex; gap: 2px; width: 84px; height: 8px; margin-top: 5px; }
 .mix i { display: block; height: 100%; min-width: 2px; }
 .mix i:first-child { border-radius: 4px 0 0 4px; } .mix i:last-child { border-radius: 0 4px 4px 0; } .mix i:only-child { border-radius: 4px; }
-.state { display: inline-flex; align-items: center; gap: 7px; }
-.state i { width: 8px; height: 8px; border-radius: 50%; background: var(--base); }
-.state.ready { font-weight: 600; } .state.ready i { background: var(--good); }
-.state.none { color: var(--ink2); }
-.state.waiting i { background: var(--s4); }
 
 /* heatmap */
 .heat { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 2px; align-items: center; }
@@ -165,12 +157,6 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .heat .cl { color: var(--muted); font-size: 11px; text-align: left; padding-top: 4px; }
 .heat .cell { aspect-ratio: 1 / 1; max-height: 26px; width: 100%; border-radius: 3px; background: color-mix(in srgb, var(--seq) var(--m), var(--wash)); }
 .heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
-.matrix td.hm { background: color-mix(in srgb, var(--seq) var(--m), transparent); border-left: 2px solid var(--surface); padding-right: 10px; }
-.matrix td.now { font-weight: 650; box-shadow: inset 0 0 0 2px var(--seq); border-radius: 4px; }
-.reviews .ttl { color: var(--ink2); min-width: 220px; }
-.reviews .sharebar { grid-template-columns: minmax(120px, 1fr) 36px; min-width: 180px; }
-.matrix th, .matrix td, .matrix th.num, .matrix td.hm { padding-right: 8px; }
-.matrix tfoot th, .matrix tfoot td { border-top: 1px solid var(--base); border-bottom: 0; color: var(--ink2); }
 .split { display: flex; gap: 2px; height: 28px; margin: 4px 0 12px; }
 .split i { display: flex; align-items: center; padding: 0 9px; border-radius: 4px; color: #fff; font-size: 12.5px; font-style: normal; font-weight: 600; overflow: hidden; white-space: nowrap; }
 .split i.c4 { color: #0b0b0b; }
@@ -298,7 +284,7 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
   main { padding: 16px 16px 40px; } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis > * { grid-column: span 1; } .kpis > :nth-child(-n+2) { grid-column: span 1; } .kpis > :first-child { grid-column: span 2; } .grid, .stack { gap: 14px; }
   .kpi .spark { display: none; } .kpis > :first-child .spark { display: block; } .kpi .d { white-space: normal; } .kpi .v { font-size: 24px; }
   .card { padding: 16px; } h1 { font-size: 20px; } .o1 { display: none; }
-  .title { max-width: 160px; } .search input { width: 150px; } .ph { display: block !important; white-space: normal; max-width: 170px; } thead th { white-space: normal; } .mix.wide { width: 84px !important; } span.state.ph { display: inline-flex !important; margin-top: 4px; } th, td { padding-right: 10px; } .axis, .plot { height: 190px; } .chart { grid-template-columns: 38px minmax(0, 1fr); }
+  .title { max-width: 160px; } .search input { width: 150px; } .ph { display: block !important; white-space: normal; max-width: 170px; } thead th { white-space: normal; } .mix.wide { width: 84px !important; } th, td { padding-right: 10px; } .axis, .plot { height: 190px; } .chart { grid-template-columns: 38px minmax(0, 1fr); }
   .heat { grid-template-columns: 32px repeat(24, minmax(0, 1fr)); gap: 1px; } .rank .n { max-width: 120px; }
   .price th, .price td { padding-right: 8px; font-size: 13px; } .price .lv { gap: 5px; }
 }

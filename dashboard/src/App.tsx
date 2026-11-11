@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { DateRange } from "./controls/DateRange.tsx";
 import { Select } from "./controls/Select.tsx";
 import { DashContext, type Dash } from "./dash.ts";
-import type { Extra } from "./extra.ts";
+import { labelOf, type Extra } from "./extra.ts";
 import { makeFmt } from "./format.ts";
 import { T, type Key, type Lang } from "./i18n.tsx";
 import { buildModel, dayAdd, days, slice, type Filter, type Payload } from "./model.ts";
@@ -131,7 +131,7 @@ export function App({ extra }: { extra?: Extra }) {
           <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />CLAUDART Insights</div>
           <div className="navlabel">{t("usage")}</div>
           <nav className="nav">{VIEWS.map(nav)}</nav>
-          {extra ? <><div className="navlabel">{extra.label}</div><nav className="nav quiet">{extra.views.map((v) => <button key={v.id} onClick={() => set({ view: v.id })} aria-current={view === v.id ? "page" : undefined}><Icon markup={v.icon} />{v.label}</button>)}</nav></> : null}
+          {extra ? <><div className="navlabel">{labelOf(extra.label, lang)}</div><nav className="nav quiet">{extra.views.map((v) => <button key={v.id} onClick={() => set({ view: v.id })} aria-current={view === v.id ? "page" : undefined}><Icon markup={v.icon} />{labelOf(v.label, lang)}</button>)}</nav></> : null}
           <div className="foot">
             <b>{t("scanned")} {f.scanTime(M.scanned)}</b>{f.int(M.transcripts)} {t("transcripts")}
             {scan.busy ? <span className="ok">{t("scanning")}</span> : scan.added ? <span className="ok">{scan.added.sessions ? L.scanNew(scan.added.sessions) : scan.added.records ? t("scanMore") : t("scanNone")}</span> : null}
@@ -139,7 +139,7 @@ export function App({ extra }: { extra?: Extra }) {
         </aside>
         <main><div className="wrap">
           <div className="top">
-            <h1>{ev ? ev.label : t(view as Key)}</h1>
+            <h1>{ev ? labelOf(ev.label, lang) : t(view as Key)}</h1>
             <div className="tools">
               {refreshButton}
               <div className="seg" role="group">{(["vi", "en"] as const).map((k) => <button key={k} aria-pressed={lang === k} onClick={() => { setLang(k); store.set("insights.lang", k); }}>{k.toUpperCase()}</button>)}</div>

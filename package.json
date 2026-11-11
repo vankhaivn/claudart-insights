@@ -10,7 +10,8 @@
     "./src/*": "./src/*",
     "./dashboard/src/*": "./dashboard/src/*",
     "./dashboard/dist/*": "./dashboard/dist/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./test/fixtures/*": "./test/fixtures/*"
   },
   "scripts": {
     "start": "npm run build && node bin/insights.mjs serve",

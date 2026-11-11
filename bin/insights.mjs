@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { loadConfig } from "../src/config.mjs";
-import { readDb } from "../src/db.mjs";
-import { int, localTime, table } from "../src/format.mjs";
-import { pricesView } from "../src/prices.mjs";
+import { localTime } from "../src/format.mjs";
+import { pricesCommand } from "../src/prices-command.mjs";
 import { scan, scanReport } from "../src/scan.mjs";
 import { serve } from "../src/serve.mjs";
 import { show } from "../src/show.mjs";
@@ -36,26 +35,7 @@ const COMMANDS = {
     const server = await serve(config, { port, onScan: (t) => reportScan(t, out, `${at(new Date().toISOString())}  `) });
     out.write(`dashboard at http://localhost:${server.address().port}: its Refresh button scans again, Ctrl+C to stop\n`);
   },
-  prices({ config, options, out }) {
-    const db = readDb(config.database);
-    const v = pricesView(db, config);
-    db.close();
-    if (options.json) out.write(`${JSON.stringify(v, null, 1)}\n`);
-    else {
-      const n = (x) => (x === null ? "—" : Number(x.toPrecision(4)).toString());
-      const kinds = ["input", "output", "read", "write 5m", "write 1h"];
-      const lines = ["price rows (USD per million tokens)", table(v.rows, [["model", (r) => r.model], ["from", (r) => r.from], ...kinds.map((h, i) => [h, (r) => n(r.p[i]), "r"])]), ""];
-      lines.push("check against the host's cost records");
-      lines.push(table(v.report, [["model", (m) => m.model], ["checked", (m) => int(m.checked), "r"], ["over 1%", (m) => int(m.misses.length), "r"], ["first miss", (m) => m.since ?? "—"], ["not checked", (m) => Object.entries(m.skipped).map(([k, c]) => `${c} ${k}`).join(", ") || "—"]]));
-      for (const m of v.report) for (const x of m.misses) lines.push(`  ${m.model} ${x.id.slice(0, 8)} ${x.day} host $${x.host.toFixed(2)} priced $${x.lo.toFixed(2)}${x.hi > x.lo + 0.005 ? `-${x.hi.toFixed(2)}` : ""} (${(x.miss * 100).toFixed(1)}%)  ${x.title ?? ""}`);
-      if (v.unpriced.length) lines.push("", `no price row: ${v.unpriced.map((r) => `${r.model} (${int(r.n)} requests, ${r.first} to ${r.last})`).join(", ")}; their cost is spread by output tokens`);
-      lines.push("", "prices that fit the host's records");
-      lines.push(table(v.fits, [["model", (f) => f.model], ["sessions", (f) => int(f.sessions), "r"], ...kinds.map((h, i) => [h, (f) => (f.fit ? n(f.fit.p[i]) : ""), "r"]), ["worst miss", (f) => (f.fit ? `${(f.fit.worst * 100).toFixed(2)}%` : "too few sessions")]]));
-      out.write(`${lines.join("\n")}\n`);
-    }
-    for (const e of v.errors) process.stderr.write(`${e}\n`);
-    return v.errors.length ? 1 : 0;
-  },
+  prices: pricesCommand,
 };
 
 // Options are --name value or --flag; FLAGS lists the ones without a value.
