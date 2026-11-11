@@ -15,13 +15,21 @@ Node.js 25 trở lên.
 ```bash
 git clone https://github.com/vankhaivn/claudart-insights.git
 cd claudart-insights
-npm install
-npm start
+make start
 ```
 
-`npm start` build dashboard và phục vụ tại <http://localhost:4310>. Mở trang sẽ quét transcript vào `data/`; nút Làm mới quét lại.
+`make start` cài package, build dashboard và phục vụ tại <http://localhost:4310>. Mở trang sẽ quét transcript vào `data/`; nút Làm mới quét lại. Máy không có `make` thì chạy `npm install` rồi `npm start`.
 
-`npm run dev` chạy cùng trang đó với hot reload.
+## Lệnh dùng hằng ngày
+
+| Target `make` | Lệnh npm / CLI tương ứng | Việc làm |
+| --- | --- | --- |
+| `make` | | Liệt kê các target |
+| `make start` | `npm start` | Build và phục vụ dashboard |
+| `make dev` | `npm run dev` | Như trên, có hot reload |
+| `make scan` | `node bin/insights.mjs scan` | Lưu các dòng transcript mới và nạp vào |
+| `make usage DAYS=30 BY=model` | `node bin/insights.mjs usage --days 30 --by model` | Token và chi phí trên terminal; `ARGS="..."` thêm option khác |
+| `make prices` | `node bin/insights.mjs prices` | Đối chiếu bảng giá với bản ghi chi phí của Claude Code |
 
 ## CLI
 
@@ -67,12 +75,12 @@ Claude Code ghi chi phí cho mỗi phiên; Insights dùng con số đó và chia
 ## Phát triển
 
 ```bash
-npm test         # node --test
-npm run check    # kiểm tra kiểu cho dashboard
-npm run build    # dashboard/dist
+make test        # npm test
+make check       # npm run check: kiểm tra kiểu cho dashboard
+make build       # npm run build: dashboard/dist
 ```
 
-Test chỉ dùng transcript tổng hợp trong thư mục tạm.
+Test chỉ dùng transcript tổng hợp trong thư mục tạm. [CONTRIBUTING.md](CONTRIBUTING.md) mô tả Issue, branch, commit và pull request; [CLAUDE.md](CLAUDE.md) hướng dẫn coding agent làm việc trên bản fork.
 
 ## Giấy phép
 

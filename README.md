@@ -15,13 +15,21 @@ Node.js 25 or newer.
 ```bash
 git clone https://github.com/vankhaivn/claudart-insights.git
 cd claudart-insights
-npm install
-npm start
+make start
 ```
 
-`npm start` builds the dashboard and serves it at <http://localhost:4310>. Opening the page scans your transcripts into `data/`; the Refresh button scans again.
+`make start` installs the packages, builds the dashboard and serves it at <http://localhost:4310>. Opening the page scans your transcripts into `data/`; the Refresh button scans again. Without `make`, run `npm install` then `npm start`.
 
-`npm run dev` serves the same page with hot reload.
+## Everyday commands
+
+| `make` target | npm / CLI equivalent | What it does |
+| --- | --- | --- |
+| `make` | | List the targets |
+| `make start` | `npm start` | Build and serve the dashboard |
+| `make dev` | `npm run dev` | The same with hot reload |
+| `make scan` | `node bin/insights.mjs scan` | Archive new transcript lines and read them in |
+| `make usage DAYS=30 BY=model` | `node bin/insights.mjs usage --days 30 --by model` | Tokens and cost in the terminal; `ARGS="..."` adds any other option |
+| `make prices` | `node bin/insights.mjs prices` | Check the price table against Claude Code's cost records |
 
 ## CLI
 
@@ -67,12 +75,12 @@ Claude Code records a cost per session; Insights uses that figure and spreads it
 ## Development
 
 ```bash
-npm test         # node --test
-npm run check    # type-check the dashboard
-npm run build    # dashboard/dist
+make test        # npm test
+make check       # npm run check: type-check the dashboard
+make build       # npm run build: dashboard/dist
 ```
 
-Tests use synthetic transcripts in temp folders only.
+Tests use synthetic transcripts in temp folders only. [CONTRIBUTING.md](CONTRIBUTING.md) covers Issues, branches, commits and pull requests; [CLAUDE.md](CLAUDE.md) guides a coding agent working on a fork.
 
 ## License
 
