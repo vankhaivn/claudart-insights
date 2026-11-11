@@ -1,10 +1,10 @@
-// The archive mirrors a provider's transcripts folder: each transcript as gzip members appended in
+// The archive mirrors a provider's transcripts folder: each transcript as zstd frames appended in
 // order, so line numbers never change, and every other session-folder file copied as is.
 import { createHash } from "node:crypto";
 import { appendFileSync, closeSync, copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readdirSync, readSync, renameSync, statSync, utimesSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { createInterface } from "node:readline";
-import { createGunzip, gzipSync } from "node:zlib";
+import { constants, createZstdDecompress, zstdCompressSync } from "node:zlib";
 
 export const HEAD_BYTES = 4096;
 const BLOCK = 64 * 1024 * 1024;
@@ -26,8 +26,8 @@ export function listArchived(archiveRoot, describe) {
     for (const e of list(dir)) {
       const abs = join(dir, e.name);
       if (e.isDirectory()) walk(abs);
-      else if (e.name.endsWith(".jsonl.gz") && !/\.g\d+\.jsonl\.gz$/.test(e.name)) {
-        const d = describe(relative(archiveRoot, abs).slice(0, -3));
+      else if (e.name.endsWith(".jsonl.zst") && !/\.g\d+\.jsonl\.zst$/.test(e.name)) {
+        const d = describe(relative(archiveRoot, abs).slice(0, -".zst".length));
         if (d) out.push(d);
       }
     }
@@ -36,7 +36,7 @@ export function listArchived(archiveRoot, describe) {
   return out;
 }
 
-export const archivePath = (archiveRoot, rel) => join(archiveRoot, `${rel}.gz`);
+export const archivePath = (archiveRoot, rel) => join(archiveRoot, `${rel}.zst`);
 
 export function sizeOf(path) {
   try {
@@ -84,33 +84,48 @@ export function* newChunks(path, offset, size) {
   }
 }
 
-export function appendChunk(gzPath, chunk) {
-  mkdirSync(dirname(gzPath), { recursive: true });
-  appendFileSync(gzPath, gzipSync(chunk));
-  return statSync(gzPath).size;
+// Level 3: about half of gzip's size on transcripts heavy with base64 images, and over ten times faster to write.
+export function appendChunk(path, chunk) {
+  mkdirSync(dirname(path), { recursive: true });
+  appendFileSync(path, zstdCompressSync(chunk, { params: { [constants.ZSTD_c_compressionLevel]: 3 } }));
+  return statSync(path).size;
 }
 
 // Move the current archive copy aside as the next free generation; returns its number.
-export function rotate(gzPath) {
-  const stem = gzPath.slice(0, -".jsonl.gz".length);
+export function rotate(path) {
+  const stem = path.slice(0, -".jsonl.zst".length);
   let n = 1;
-  while (existsSync(`${stem}.g${n}.jsonl.gz`)) n++;
-  renameSync(gzPath, `${stem}.g${n}.jsonl.gz`);
+  while (existsSync(`${stem}.g${n}.jsonl.zst`)) n++;
+  renameSync(path, `${stem}.g${n}.jsonl.zst`);
   return n;
 }
 
 // Lines of an archive file, numbered from 1, as { line, text, bytes } where bytes counts the newline.
-export async function* archiveLines(gzPath, from = 1) {
-  const rl = createInterface({ input: createReadStream(gzPath).pipe(createGunzip()), crlfDelay: Infinity });
+// Node's decoder stops at the end of a frame, so each frame is read from where the one before it ended.
+export async function* archiveLines(path, from = 1) {
+  const size = statSync(path).size;
   let n = 0;
-  for await (const text of rl) {
-    n++;
-    if (n >= from) yield { line: n, text, bytes: Buffer.byteLength(text) + 1 };
+  for (let start = 0; start < size; ) {
+    const input = createReadStream(path, { start });
+    const unzip = createZstdDecompress();
+    input.on("error", (err) => unzip.destroy(err));
+    input.pipe(unzip);
+    try {
+      for await (const text of createInterface({ input: unzip, crlfDelay: Infinity })) {
+        n++;
+        if (n >= from) yield { line: n, text, bytes: Buffer.byteLength(text) + 1 };
+      }
+    } finally {
+      input.destroy();
+      unzip.destroy();
+    }
+    if (!unzip.bytesWritten) throw new Error(`archive ${path} has bytes that are not a zstd frame at ${start}`);
+    start += unzip.bytesWritten;
   }
 }
 
-export async function readLine(gzPath, wanted) {
-  for await (const { line, text } of archiveLines(gzPath, wanted)) if (line === wanted) return text;
+export async function readLine(path, wanted) {
+  for await (const { line, text } of archiveLines(path, wanted)) if (line === wanted) return text;
   return null;
 }
 

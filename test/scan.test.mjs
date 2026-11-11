@@ -76,7 +76,7 @@ test("the archive sits under archive/<provider>/ and sessions and files carry th
   writeTranscript(home.transcripts, "slug", s, [user("2026-11-01T01:00:00Z", "p"), assistant("2026-11-01T01:00:01Z", "m55", {})]);
   assert.equal(home.run("scan").code, 0);
   assert.deepEqual(readdirSync(join(home.data, "archive")), ["claude"]);
-  assert.ok(statSync(join(home.data, "archive", "claude", "slug", `${s}.jsonl.gz`)).isFile());
+  assert.ok(statSync(join(home.data, "archive", "claude", "slug", `${s}.jsonl.zst`)).isFile());
   const db = new DatabaseSync(join(home.data, "usage.db"));
   assert.deepEqual(db.prepare("SELECT DISTINCT provider FROM files").all().map((r) => r.provider), ["claude"]);
   assert.deepEqual(db.prepare("SELECT DISTINCT provider FROM sessions").all().map((r) => r.provider), ["claude"]);
