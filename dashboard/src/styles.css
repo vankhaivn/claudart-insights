@@ -34,16 +34,17 @@ code { font: 12.5px/1 ui-monospace, "SF Mono", Menlo, monospace; }
 .nav button[aria-current="page"] { background: var(--wash); color: var(--ink); font-weight: 600; }
 .nav svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .nav.quiet button { font-size: 13px; padding: 6px 10px; }
-.side .foot { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--hair); color: var(--ink2); font-size: 12.5px; }
-.side .foot b { display: block; color: var(--ink); font-weight: 600; }
+.side .foot { display: grid; gap: 12px; margin-top: auto; padding: 12px 0 0; border-top: 1px solid var(--hair); color: var(--ink2); font-size: 12.5px; }
+.foot .scan { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-left: 10px; } .foot .si { color: var(--ink2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foot .scan .icon { background: none; } .foot .scan .icon:hover:not(:disabled) { background: var(--wash); }
+.foot .prefs { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.foot .icon { width: 30px; height: 30px; border-radius: 8px; color: var(--ink2); } .foot .icon:hover:not(:disabled) { color: var(--ink); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .mock { display: inline-block; margin-top: 8px; padding: 2px 8px; border: 1px solid var(--base); border-radius: 999px; font-size: 11.5px; font-weight: 500; }
 
 /* main */
-main { min-width: 0; padding: 26px 36px 56px; }
+main { min-width: 0; padding: 20px 36px 56px; }
 .wrap { max-width: 1320px; margin: 0 auto; }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.015em; }
-.tools { display: flex; gap: 8px; flex: none; }
 .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--wash); }
 .seg button { padding: 5px 11px; border: 0; border-radius: 7px; background: none; cursor: pointer; color: var(--ink2); font-size: 13px; font-weight: 500; white-space: nowrap; }
 .seg button:hover { color: var(--ink); }
@@ -51,7 +52,7 @@ h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -.015em; }
 .seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, var(--raised)); color: var(--accent-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
 .icon { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 10px; background: var(--wash); cursor: pointer; }
 .icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 20px 0 22px; }
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 22px; }
 .field { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 1px solid var(--hair); border-radius: 10px; background: var(--surface); color: var(--ink2); font-size: 13px; }
 .field input { min-width: 0; border: 0; background: none; outline: none; color: var(--ink); font-size: 13px; }
 .clearall { gap: 6px; color: var(--ink); cursor: pointer; }
@@ -273,28 +274,24 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
   .app { display: block; }
   .side { position: static; height: auto; flex-direction: row; align-items: center; gap: 4px 6px; padding: 10px 16px; border-right: 0; border-bottom: 1px solid var(--hair); overflow-x: auto; scrollbar-width: none; }
   .side::-webkit-scrollbar { display: none; } .nav { flex: none; }
-  .brand { padding: 0 8px 0 0; white-space: nowrap; flex: none; } .navlabel, .side .foot { display: none; }
+  .brand { padding: 0 8px 0 0; white-space: nowrap; flex: none; } .navlabel, .foot .si { display: none; } .foot .scan { padding: 0; } .foot .scan .icon { background: var(--wash); }
+  .side .foot { position: sticky; right: -16px; display: flex; align-self: stretch; align-items: center; gap: 6px; margin: 0 -16px 0 auto; padding: 0 16px 0 10px; border-top: 0; background: var(--surface); }
   .nav { flex-direction: row; } .nav button { white-space: nowrap; } .nav svg { display: none; } .nav.quiet button { font-size: 14px; padding: 8px 10px; }
   main { padding: 20px 20px 48px; } .title { max-width: 200px; } .filters { gap: 8px; } .filters .seg button { padding: 5px 6px; font-size: 12.5px; } .field { padding: 0 8px; }
 }
 @media (max-width: 600px) {
   main { padding: 16px 16px 40px; } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis > * { grid-column: span 1; } .kpis > :nth-child(-n+2) { grid-column: span 1; } .kpis > :first-child { grid-column: span 2; } .grid, .stack { gap: 14px; }
   .kpi .spark { display: none; } .kpis > :first-child .spark { display: block; } .kpi .d { white-space: normal; } .kpi .v { font-size: 24px; }
-  .card { padding: 16px; } h1 { font-size: 20px; } .o1 { display: none; }
+  .card { padding: 16px; } .o1 { display: none; }
   .title { max-width: 160px; } .search input { width: 150px; } .ph { display: block !important; white-space: normal; max-width: 170px; } thead th { white-space: normal; } .mix.wide { width: 84px !important; } th, td { padding-right: 10px; } .axis, .plot { height: 190px; } .chart { grid-template-columns: 38px minmax(0, 1fr); }
   .heat { grid-template-columns: 32px repeat(24, minmax(0, 1fr)); gap: 1px; } .rank .n { max-width: 120px; }
   .price th, .price td { padding-right: 8px; font-size: 13px; } .price .lv { gap: 5px; }
 }
 
-/* refresh: the button spins while a scan runs; its label drops on narrow widths */
-.refresh { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px 0 10px; border: 0; border-radius: 10px; background: var(--wash); color: var(--ink2); cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
-.refresh:hover:not(:disabled) { color: var(--ink); }
+/* refresh: the button spins while a scan runs */
 .refresh:disabled { cursor: progress; }
-.refresh svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .refresh.busy svg { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .refresh.busy svg { animation-duration: 3s; } }
-.side .foot .ok { display: block; margin-top: 2px; }
 .alert { margin: -6px 0 0; color: var(--neg); font-size: 12.5px; }
 .loading { padding: 80px 0; text-align: center; color: var(--ink2); }
-@media (max-width: 880px) { .refresh .rl { display: none; } .refresh { width: 34px; padding: 0; justify-content: center; } }

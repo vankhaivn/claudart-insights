@@ -22,6 +22,7 @@ export function makeFmt(lang: "vi" | "en") {
     dec: (n: number) => new Intl.NumberFormat(loc, { maximumFractionDigits: 1 }).format(n),
     times: (n: number) => new Intl.NumberFormat(loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n) + "×",
     startText: (x: Session) => `${dshort(x.day)} ${String(x.hour).padStart(2, "0")}:${String(x.min).padStart(2, "0")}`,
-    scanTime: (iso: string) => new Intl.DateTimeFormat(loc, { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }).format(new Date(iso)),
+    // The time alone for a scan today, with the date otherwise.
+    scanTime: (iso: string) => { const d = new Date(iso); return new Intl.DateTimeFormat(loc, d.toDateString() === new Date().toDateString() ? { hour: "2-digit", minute: "2-digit" } : { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" }).format(d); },
   };
 }

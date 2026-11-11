@@ -6,7 +6,6 @@ import { labelOf, type Extra } from "./extra.ts";
 import { makeFmt } from "./format.ts";
 import { T, type Key, type Lang } from "./i18n.tsx";
 import { buildModel, dayAdd, days, slice, type Filter, type Payload } from "./model.ts";
-import { tip } from "./ui.tsx";
 import { parseUrl, toUrl, type UrlState, type View } from "./state.ts";
 import { Activity } from "./views/Activity.tsx";
 import { Effort } from "./views/Effort.tsx";
@@ -101,8 +100,8 @@ export function App({ extra }: { extra?: Extra }) {
   }, []);
 
   const refreshButton = (
-    <button className={`refresh${scan.busy ? " busy" : ""}`} onClick={refresh} disabled={scan.busy} data-tip={tip(scan.busy ? t("scanning") : t("refresh"), [])}>
-      <Icon name="refresh" /><span className="rl">{scan.busy ? t("scanning") : t("refresh")}</span>
+    <button className={`icon refresh${scan.busy ? " busy" : ""}`} onClick={refresh} disabled={scan.busy} aria-label={scan.busy ? t("scanning") : t("refresh")}>
+      <Icon name="refresh" />
     </button>
   );
 
@@ -132,21 +131,21 @@ export function App({ extra }: { extra?: Extra }) {
           <div className="navlabel">{t("usage")}</div>
           <nav className="nav">{VIEWS.map(nav)}</nav>
           {extra ? <><div className="navlabel">{labelOf(extra.label, lang)}</div><nav className="nav quiet">{extra.views.map((v) => <button key={v.id} onClick={() => set({ view: v.id })} aria-current={view === v.id ? "page" : undefined}><Icon markup={v.icon} />{labelOf(v.label, lang)}</button>)}</nav></> : null}
+          {/* The scan and the app's settings: below the nav on wide screens, at the end of the nav bar on narrow ones. */}
           <div className="foot">
-            <b>{t("scanned")} {f.scanTime(M.scanned)}</b>{f.int(M.transcripts)} {t("transcripts")}
-            {scan.busy ? <span className="ok">{t("scanning")}</span> : scan.added ? <span className="ok">{scan.added.sessions ? L.scanNew(scan.added.sessions) : scan.added.records ? t("scanMore") : t("scanNone")}</span> : null}
+            <div className="scan">
+              <div className="si">{scan.busy ? t("scanning") : `${t("scanned")} ${f.scanTime(M.scanned)}${scan.added?.sessions ? ` · ${L.scanNew(scan.added.sessions)}` : ""}`}</div>
+              {refreshButton}
+            </div>
+            <div className="prefs">
+              <div className="seg" role="group">{(["vi", "en"] as const).map((k) => <button key={k} aria-pressed={lang === k} onClick={() => { setLang(k); store.set("insights.lang", k); }}>{k.toUpperCase()}</button>)}</div>
+              <button className="icon" aria-label={t("theme")} onClick={() => { const v = theme === "dark" ? "light" : "dark"; setTheme(v); store.set("insights.theme", v); }}><Icon name={theme === "dark" ? "sun" : "moon"} /></button>
+            </div>
           </div>
         </aside>
         <main><div className="wrap">
-          <div className="top">
-            <h1>{ev ? labelOf(ev.label, lang) : t(view as Key)}</h1>
-            <div className="tools">
-              {refreshButton}
-              <div className="seg" role="group">{(["vi", "en"] as const).map((k) => <button key={k} aria-pressed={lang === k} onClick={() => { setLang(k); store.set("insights.lang", k); }}>{k.toUpperCase()}</button>)}</div>
-              <button className="icon" aria-label={t("theme")} data-tip={tip(t("theme"), [])} onClick={() => { const v = theme === "dark" ? "light" : "dark"; setTheme(v); store.set("insights.theme", v); }}><Icon name={theme === "dark" ? "sun" : "moon"} /></button>
-            </div>
-          </div>
-          {ev?.filters === false ? <div style={{ height: 20 }} /> : (
+          <h1 className="sr">{ev ? labelOf(ev.label, lang) : t(view as Key)}</h1>
+          {ev?.filters === false ? null : (
           <div className="filters">
             <div className="seg" role="group">{([["1", "today"], ["7", "d7"], ["14", "d14"], ["30", "d30"], ["all", "all"]] as const).map(([k, l]) => <button key={k} aria-pressed={url.range === k} onClick={() => set({ range: k, from: "", to: "" })}>{t(l)}</button>)}</div>
             <DateRange from={filter.from} to={filter.to} min={M.first} max={M.today} onChange={(from, to) => set({ range: "", from, to })}

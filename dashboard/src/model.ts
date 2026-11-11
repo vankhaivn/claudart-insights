@@ -33,7 +33,7 @@ export function buildModel(data: Payload) {
   const sumOut = (p: number) => facts.reduce((n, f) => n + (data.sessions[f.s].p === p ? f.o : 0), 0);
   const projectRank = data.projects.map((_, i) => i).sort((a, b) => sumOut(b) - sumOut(a));
   return {
-    today: data.today, scanned: data.scanned, transcripts: data.transcripts,
+    today: data.today, scanned: data.scanned,
     models: data.models, projects: data.projects, types: data.types,
     // Levels low → max, then any other value seen as written; facts and runs hold an index into it.
     efforts: data.efforts,
