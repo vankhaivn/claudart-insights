@@ -24,8 +24,12 @@ function lineCount(chunk) {
   return n;
 }
 
-// onProgress({ reason, done, total }) follows the transcripts read; reason is "first" for a new database, "rebuild" when
-// a schema change emptied it, "update" otherwise.
+// Lets the server answer other requests, such as the progress, between steps of a long scan.
+const yieldToLoop = () => new Promise((resolve) => setImmediate(resolve));
+
+// onProgress({ reason, step, done, total, bytes, totalBytes }) follows the scan: step "find" opens each transcript to order
+// them, "read" ingests them (bytes ingested of totalBytes), "finish" builds the figures. reason is "first" for a new
+// database, "rebuild" when a schema change emptied it, "update" otherwise.
 export async function scan(config, { onProgress = () => {} } = {}) {
   const providers = Object.entries(config.providers).map(([name, p]) => ({ ...PROVIDERS[name], root: p.transcripts, archive: join(config.archive, name) }));
   const had = existsSync(config.database);
@@ -52,18 +56,33 @@ export async function scan(config, { onProgress = () => {} } = {}) {
     for (const d of listArchived(p.archive, p.describe)) if (!work.has(`${p.name}/${d.rel}`)) work.set(`${p.name}/${d.rel}`, { ...d, ...base, src: null });
   }
   for (const d of work.values()) if (d.kind === "main") mains.add(d.sessionId);
-  // A continuation starts with the same records as the file it continues, so ties go to the file last written first.
-  const jobs = [...work.values()].map((d) => {
+  // Each job weighs the bytes it still has to ingest: the archive when it is ahead of the cursor, then the host's new bytes.
+  const jobs = [];
+  for (const d of work.values()) {
+    if (jobs.length % 100 === 0) {
+      onProgress({ reason, step: "find", done: jobs.length, total: work.size, bytes: 0, totalBytes: 0 });
+      await yieldToLoop();
+    }
     const row = getFile.get(d.provider, d.rel);
     const src = d.src ?? archivePath(d.dir, d.rel);
-    return { d, ts: row?.first_ts ?? (d.src ? peekFirstTs(d.src) : null) ?? "~", mtime: statSync(src).mtimeMs };
-  });
+    const stat = statSync(src);
+    const arcSize = sizeOf(archivePath(d.dir, d.rel)) ?? 0;
+    const weight = (arcSize !== (row?.archive_size ?? 0) ? arcSize : 0) + (d.src ? Math.max(0, stat.size - (row?.offset ?? 0)) : 0);
+    jobs.push({ d, ts: row?.first_ts ?? (d.src ? peekFirstTs(d.src) : null) ?? "~", mtime: stat.mtimeMs, weight });
+  }
+  // A continuation starts with the same records as the file it continues, so ties go to the file last written first.
   jobs.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : a.mtime - b.mtime));
+  const totalBytes = jobs.reduce((n, j) => n + j.weight, 0);
+  let bytes = 0, next = 0;
+  const report = (done, extra = 0) => onProgress({ reason, step: "read", done, total: jobs.length, bytes: bytes + extra, totalBytes });
 
-  for (const [done, { d }] of jobs.entries()) {
-    onProgress({ reason, done, total: jobs.length });
+  for (const [done, { d, weight }] of jobs.entries()) {
+    bytes = next;
+    next += weight;
+    report(done);
+    await yieldToLoop();
     let file = fileRow(d);
-    const gz = archivePath(d.dir, d.rel);
+    const arc = archivePath(d.dir, d.rel);
     const ingest = ingesters.get(d.provider);
     let firstTs = null;
     let cwd = null;
@@ -82,16 +101,16 @@ export async function scan(config, { onProgress = () => {} } = {}) {
 
     // The archive is ahead of the cursor when a scan died between the append and the commit,
     // or when the database was rebuilt: ingest what the archive holds beyond the cursor, in batches.
-    const gzSize = sizeOf(gz) ?? 0;
-    if (gzSize !== file.archive_size) {
-      if (gzSize < file.archive_size) throw new Error(`archive ${gz} is shorter than recorded; refusing to continue`);
+    const arcSize = sizeOf(arc) ?? 0;
+    if (arcSize !== file.archive_size) {
+      if (arcSize < file.archive_size) throw new Error(`archive ${arc} is shorter than recorded; refusing to continue`);
       let { offset, lines } = file;
       const head = [];
       let headBytes = 0;
       let batch = 0;
       db.exec("BEGIN");
       try {
-        for await (const l of archiveLines(gz)) {
+        for await (const l of archiveLines(arc)) {
           if (headBytes < HEAD_BYTES) {
             head.push(Buffer.from(`${l.text}\n`));
             headBytes += l.bytes;
@@ -106,7 +125,7 @@ export async function scan(config, { onProgress = () => {} } = {}) {
             db.exec("BEGIN");
           }
         }
-        saveCursor.run(offset, lines, hashHead(Buffer.concat(head)), gzSize, firstTs, cwd, d.src ? 1 : 0, ownFirst, ownLast, file.id);
+        saveCursor.run(offset, lines, hashHead(Buffer.concat(head)), arcSize, firstTs, cwd, d.src ? 1 : 0, ownFirst, ownLast, file.id);
         db.exec("COMMIT");
       } catch (err) {
         db.exec("ROLLBACK");
@@ -124,7 +143,7 @@ export async function scan(config, { onProgress = () => {} } = {}) {
 
     // A file that shrank or whose consumed head changed was rewritten: keep the old copy as a generation.
     if (file.offset > 0 && (size < file.offset || liveHead(d.src, file.offset) !== file.head_hash)) {
-      if (existsSync(gz)) rotate(gz);
+      if (existsSync(arc)) rotate(arc);
       transaction(db, () => {
         for (const c of clear) c.run(file.id);
         resetFile.run(file.id);
@@ -136,7 +155,7 @@ export async function scan(config, { onProgress = () => {} } = {}) {
 
     let { offset, lines } = file;
     for (const chunk of newChunks(d.src, offset, size)) {
-      const archived = appendChunk(gz, chunk);
+      const archived = appendChunk(arc, chunk);
       const count = lineCount(chunk);
       const text = chunk.toString("utf8");
       transaction(db, () => {
@@ -151,11 +170,13 @@ export async function scan(config, { onProgress = () => {} } = {}) {
         saveCursor.run(offset, lines, liveHead(d.src, offset), archived, firstTs, cwd, 1, ownFirst, ownLast, file.id);
       });
       totals.bytes += chunk.length;
+      report(done, Math.max(0, weight - (size - offset)));
+      await yieldToLoop();
     }
     if (offset > file.offset) totals.files++;
   }
-
-  onProgress({ reason, done: jobs.length, total: jobs.length });
+  onProgress({ reason, step: "finish", done: jobs.length, total: jobs.length, bytes: totalBytes, totalBytes });
+  await yieldToLoop();
 
   // Other session-folder files; the subagent meta files among them give each subagent its type.
   const copied = new Set();

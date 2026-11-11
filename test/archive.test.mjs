@@ -1,13 +1,36 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { gunzipSync } from "node:zlib";
+import { zstdDecompressSync } from "node:zlib";
+import { appendChunk, archiveLines, readLine } from "../src/archive.mjs";
 import { assistant, jsonl, sid, user, writeTranscript } from "./fixtures/build.mjs";
 import { makeHome } from "./fixtures/home.mjs";
 
-const archived = (home, rel) => gunzipSync(readFileSync(join(home.data, "archive", "claude", `${rel}.gz`))).toString("utf8");
+// An archive file decoded frame by frame, as standard zstd.
+function archived(home, rel) {
+  let buf = readFileSync(join(home.data, "archive", "claude", `${rel}.zst`)), out = "";
+  while (buf.length) {
+    const { buffer, engine } = zstdDecompressSync(buf, { info: true });
+    out += buffer.toString("utf8");
+    buf = buf.subarray(engine.bytesWritten);
+  }
+  return out;
+}
+
+test("an archive file of many large frames reads back every line in order", async () => {
+  const path = join(mkdtempSync(join(tmpdir(), "insights-arc-")), "t.jsonl.zst");
+  const lines = Array.from({ length: 30 }, (_, i) => `{"n":${i},"pad":"${String(i).repeat(40000)}"}`);
+  for (let i = 0; i < lines.length; i += 10) appendChunk(path, Buffer.from(lines.slice(i, i + 10).join("\n") + "\n"));
+  const read = [];
+  for await (const l of archiveLines(path)) read.push(l);
+  assert.deepEqual(read.map((l) => l.text), lines);
+  assert.deepEqual(read.map((l) => l.line), lines.map((_, i) => i + 1));
+  assert.equal(await readLine(path, 25), lines[24]);
+  assert.equal(await readLine(path, 31), null);
+});
 
 test("archive appends only complete new lines and keeps line numbers", () => {
   const home = makeHome();
@@ -63,7 +86,7 @@ test("a shorter file is a rewrite too", () => {
   const short = [user("2026-11-01T02:00:00Z", "c")];
   writeTranscript(home.transcripts, "slug", s, short);
   home.run("scan");
-  assert.ok(existsSync(join(home.data, "archive", "claude", "slug", `${s}.g1.jsonl.gz`)));
+  assert.ok(existsSync(join(home.data, "archive", "claude", "slug", `${s}.g1.jsonl.zst`)));
   assert.equal(archived(home, `slug/${s}.jsonl`), jsonl(short));
 });
 

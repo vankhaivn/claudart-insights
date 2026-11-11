@@ -19,6 +19,26 @@ function fakeDist() {
   return dist;
 }
 
+test("progress answers while a first scan is still reading", async () => {
+  const home = makeHome();
+  for (let k = 1; k <= 60; k++) writeTranscript(home.transcripts, "demo", sid(k), Array.from({ length: 40 }, (_, i) => assistant(`2026-11-01T01:00:${String(i).padStart(2, "0")}Z`, `m${k}-${i}`, { output_tokens: 10 })));
+  const server = await serve(loadConfig(home.config), { port: 0, dist: fakeDist() });
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    let over = false;
+    const scan = fetch(`${url}/api/scan`, { method: "POST" }).then((r) => r.json()).then(() => { over = true; });
+    const seen = [];
+    while (!over) {
+      const p = await fetch(`${url}/api/scan/progress`).then((r) => r.json());
+      if (p && !over) seen.push(p.step);
+    }
+    await scan;
+    assert.ok(seen.includes("read"), `saw ${seen.join(", ") || "nothing"} before the scan ended`);
+  } finally {
+    server.close();
+  }
+});
+
 test("serve answers the API, scanning only on request, and serves the app for every page path", async () => {
   const home = makeHome();
   const s = sid(90);
