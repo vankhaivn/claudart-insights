@@ -18,7 +18,7 @@
     "dev": "vite dashboard",
     "build": "tsc --noEmit -p dashboard && vite build dashboard",
     "check": "tsc --noEmit -p dashboard",
-    "test": "node --test"
+    "test": "node --test \"test/*.test.mjs\" \"dashboard/src/*.test.ts\""
   },
   "dependencies": {
     "react": "^19.3.1",
