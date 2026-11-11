@@ -10,9 +10,9 @@ export type TipRow = [cls: string, name: string, value: string];
 export const tip = (head: string, rows: TipRow[]) => JSON.stringify({ h: head, r: rows });
 const m = (v: string): CSSProperties => ({ "--m": v }) as CSSProperties;
 
-// Which side of a change is better: higher, lower, or neither (volume), as the trend colors read it.
-export type Side = "up" | "down" | "none";
-export const tone = (d: number, side: Side) => (!d ? "" : side === "none" ? "vol" : (d > 0) === (side === "up") ? "better" : "worse");
+// "up": a rise is better (cache share, speed); "none": a volume, money included, colored neutrally either way.
+export type Side = "up" | "none";
+export const tone = (d: number, side: Side) => (!d ? "" : side === "none" ? "vol" : d > 0 ? "better" : "worse");
 
 // The change against the window before, in percent, or in points for a share.
 export function Delta({ a, b, side, points = false }: { a: number; b: number | undefined; side: Side; points?: boolean }) {
