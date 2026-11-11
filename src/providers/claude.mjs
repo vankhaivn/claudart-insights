@@ -1,4 +1,54 @@
-// Turn archived transcript lines into database rows. Tool output is never stored.
+// Everything that knows the Claude Code transcript format: where transcripts sit in the projects folder,
+// the shapes of their records, and the subagent meta files. Tool output is never stored.
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { zoner } from "../zone.mjs";
+
+const isDir = (p) => {
+  try {
+    return statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+};
+const list = (p) => (isDir(p) ? readdirSync(p, { withFileTypes: true }) : []);
+
+// Describe a transcript by its path relative to the projects folder:
+// <slug>/<session>.jsonl (main) or <slug>/<session>/subagents/agent-<id>.jsonl (sub).
+export function describe(rel) {
+  const parts = rel.split(sep);
+  if (parts.length === 2 && parts[1].endsWith(".jsonl")) return { rel, kind: "main", slug: parts[0], sessionId: parts[1].slice(0, -6), agentId: null };
+  if (parts.length === 4 && parts[2] === "subagents" && /^agent-.+\.jsonl$/.test(parts[3]))
+    return { rel, kind: "sub", slug: parts[0], sessionId: parts[1], agentId: parts[3].slice(6, -6) };
+  return null;
+}
+
+// Transcripts and other session-folder files under a projects folder.
+export function listHost(root) {
+  const transcripts = [];
+  const others = [];
+  for (const slug of list(root)) {
+    if (!slug.isDirectory()) continue;
+    const slugDir = join(root, slug.name);
+    for (const entry of list(slugDir)) {
+      if (entry.isFile() && entry.name.endsWith(".jsonl")) transcripts.push(describe(join(slug.name, entry.name)));
+      if (!entry.isDirectory() || !/^[0-9a-f-]{36}$/.test(entry.name)) continue;
+      const walk = (dir) => {
+        for (const e of list(dir)) {
+          const abs = join(dir, e.name);
+          if (e.isDirectory()) walk(abs);
+          else if (e.isFile()) {
+            const d = describe(relative(root, abs));
+            if (d) transcripts.push(d);
+            else others.push(relative(root, abs));
+          }
+        }
+      };
+      walk(join(slugDir, entry.name));
+    }
+  }
+  return { transcripts, others };
+}
 
 const FAMILIES = ["opus", "sonnet", "haiku", "fable"];
 export const familyOf = (model) => FAMILIES.find((f) => model.includes(f)) ?? model;
@@ -29,22 +79,6 @@ export function ownerText(rec) {
     kept.push(text);
   }
   return kept.length ? kept.join("\n\n") : null;
-}
-
-// Day and hour of an ISO instant in the configured time zone.
-export function zoner(timeZone) {
-  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" });
-  const cache = new Map();
-  return (iso) => {
-    const key = iso.slice(0, 16);
-    let hit = cache.get(key);
-    if (!hit) {
-      const p = Object.fromEntries(fmt.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
-      hit = { day: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) };
-      cache.set(key, hit);
-    }
-    return hit;
-  };
 }
 
 // hasFile(sessionId): whether a main transcript of that session is known; its records are left to it.
@@ -140,3 +174,16 @@ export function createIngester(db, timeZone, hasFile = () => false) {
     return { added: 1, ...seen };
   };
 }
+
+// The type and parent tool call of a subagent, from the meta file archived beside its transcript.
+export function subagentMeta(archiveDir, d) {
+  try {
+    const m = JSON.parse(readFileSync(join(archiveDir, d.rel.replace(/\.jsonl$/, ".meta.json")), "utf8"));
+    return { type: m.agentType ?? null, toolUseId: m.toolUseId ?? null };
+  } catch {
+    // No readable meta file: the subagent has no recorded type.
+    return { type: null, toolUseId: null };
+  }
+}
+
+export const claude = { name: "claude", describe, listHost, createIngester, subagentMeta };

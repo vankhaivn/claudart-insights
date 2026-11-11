@@ -12,7 +12,7 @@ export function makeHome(overrides = {}) {
   const dir = mkdtempSync(join(tmpdir(), "insights-test-"));
   const transcripts = join(dir, "home", ".claude", "projects");
   mkdirSync(transcripts, { recursive: true });
-  const config = { transcripts, data: "data", prices: "prices.md", timeZone: "Etc/GMT-7", ...overrides };
+  const config = { providers: { claude: { transcripts } }, data: "data", prices: "prices.md", timeZone: "Etc/GMT-7", ...overrides };
   writeFileSync(join(dir, "insights.config.json"), JSON.stringify(config));
   const file = join(dir, "insights.config.json");
   return { dir, transcripts, data: join(dir, "data"), config: file, run: (...args) => runInsights(file, args) };

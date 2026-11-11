@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, readdirSync, rmSync, statSync } from "node:fs";
+import { chmodSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
@@ -66,4 +66,50 @@ test("show reports a bad reference", () => {
   assert.match(home.run("show", "00000054:9").stderr, /has no line 9/);
   assert.match(home.run("show", "ffff:1").stderr, /no archived transcript/);
   assert.notEqual(home.run("show", "nonsense").code, 0);
+});
+
+test("the archive sits under archive/<provider>/ and sessions and files carry the provider", () => {
+  const home = makeHome();
+  const s = sid(55);
+  writeTranscript(home.transcripts, "slug", s, [user("2026-11-01T01:00:00Z", "p"), assistant("2026-11-01T01:00:01Z", "m55", {})]);
+  assert.equal(home.run("scan").code, 0);
+  assert.deepEqual(readdirSync(join(home.data, "archive")), ["claude"]);
+  assert.ok(statSync(join(home.data, "archive", "claude", "slug", `${s}.jsonl.gz`)).isFile());
+  const db = new DatabaseSync(join(home.data, "usage.db"));
+  assert.deepEqual(db.prepare("SELECT DISTINCT provider FROM files").all().map((r) => r.provider), ["claude"]);
+  assert.deepEqual(db.prepare("SELECT DISTINCT provider FROM sessions").all().map((r) => r.provider), ["claude"]);
+  db.close();
+  assert.equal(JSON.parse(home.run("show", `${s.slice(0, 8)}:1`).stdout).message.content, "p");
+});
+
+// A session's project is named by its first cwd, read again on every scan.
+function projectsOf(home) {
+  const db = new DatabaseSync(join(home.data, "usage.db"));
+  const rows = Object.fromEntries(db.prepare("SELECT id, project FROM sessions").all().map((r) => [r.id, r.project]));
+  db.close();
+  return rows;
+}
+
+test("the project is the nearest .git at or above the cwd, else the cwd's own name, and survives the folder's deletion", () => {
+  const home = makeHome();
+  const work = join(home.dir, "work");
+  mkdirSync(join(work, "outer", ".git"), { recursive: true });
+  mkdirSync(join(work, "outer", "inner", ".git"), { recursive: true });
+  mkdirSync(join(work, "outer", "inner", "src"), { recursive: true });
+  mkdirSync(join(work, "outer", "docs"), { recursive: true });
+  mkdirSync(join(work, "loose", "sub"), { recursive: true });
+  mkdirSync(join(work, "temp"), { recursive: true });
+  const at = (k, cwd) => writeTranscript(home.transcripts, "slug", sid(k), [user("2026-11-01T01:00:00Z", "go", { cwd })]);
+  at(1, join(work, "outer", "inner", "src"));
+  at(2, join(work, "outer", "docs"));
+  at(3, join(work, "outer"));
+  at(4, join(work, "loose", "sub"));
+  at(5, join(work, "temp"));
+  home.run("scan");
+  assert.deepEqual(projectsOf(home), { [sid(1)]: "inner", [sid(2)]: "outer", [sid(3)]: "outer", [sid(4)]: "sub", [sid(5)]: "temp" });
+  rmSync(join(work, "temp"), { recursive: true });
+  rmSync(join(work, "outer", "inner"), { recursive: true });
+  home.run("scan");
+  assert.equal(projectsOf(home)[sid(5)], "temp");
+  assert.equal(projectsOf(home)[sid(1)], "inner");
 });

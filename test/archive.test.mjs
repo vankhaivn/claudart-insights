@@ -7,7 +7,7 @@ import { gunzipSync } from "node:zlib";
 import { assistant, jsonl, sid, user, writeTranscript } from "./fixtures/build.mjs";
 import { makeHome } from "./fixtures/home.mjs";
 
-const archived = (home, rel) => gunzipSync(readFileSync(join(home.data, "archive", `${rel}.gz`))).toString("utf8");
+const archived = (home, rel) => gunzipSync(readFileSync(join(home.data, "archive", "claude", `${rel}.gz`))).toString("utf8");
 
 test("archive appends only complete new lines and keeps line numbers", () => {
   const home = makeHome();
@@ -63,7 +63,7 @@ test("a shorter file is a rewrite too", () => {
   const short = [user("2026-11-01T02:00:00Z", "c")];
   writeTranscript(home.transcripts, "slug", s, short);
   home.run("scan");
-  assert.ok(existsSync(join(home.data, "archive", "slug", `${s}.g1.jsonl.gz`)));
+  assert.ok(existsSync(join(home.data, "archive", "claude", "slug", `${s}.g1.jsonl.gz`)));
   assert.equal(archived(home, `slug/${s}.jsonl`), jsonl(short));
 });
 
@@ -74,6 +74,6 @@ test("other session-folder files are copied when they change", () => {
   writeTranscript(home.transcripts, "slug", s, null, { agent: "abc", raw: jsonl([assistant("2026-11-01T01:00:02Z", "m-sub", {}, { rec: { isSidechain: true } })]) });
   writeFileSync(join(home.transcripts, "slug", s, "subagents", "agent-abc.meta.json"), JSON.stringify({ agentType: "Explore", toolUseId: "toolu_1" }));
   assert.match(home.run("scan").stdout, /copied 1 other files/);
-  assert.ok(existsSync(join(home.data, "archive", "slug", s, "subagents", "agent-abc.meta.json")));
+  assert.ok(existsSync(join(home.data, "archive", "claude", "slug", s, "subagents", "agent-abc.meta.json")));
   assert.equal(home.run("scan").stdout, "nothing new\n");
 });

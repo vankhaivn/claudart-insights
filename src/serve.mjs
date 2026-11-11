@@ -10,9 +10,9 @@ const DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "dashboard", "d
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json" };
 const TEXT = { "content-type": "text/plain; charset=utf-8" };
 
-// Resolves with the listening server; onScan receives each scan's totals.
-export function serve(config, { port, onScan = () => {}, dist = DIST }) {
-  const api = createApi(config, { onScan });
+// Resolves with the listening server; onScan receives each scan's totals, routes are extra API handlers (see createApi).
+export function serve(config, { port, onScan = () => {}, dist = DIST, routes }) {
+  const api = createApi(config, { onScan, routes });
   const server = createServer(async (req, res) => {
     if (await api(req, res)) return;
     if (req.method !== "GET") return res.writeHead(405, TEXT).end("method not allowed\n");

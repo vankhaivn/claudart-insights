@@ -42,7 +42,7 @@ Copy `insights.config.example.json` to `insights.config.json` in the repository 
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `transcripts` | `~/.claude/projects` | Claude Code's projects folder |
+| `providers` | `{ "claude": { "transcripts": "~/.claude/projects" } }` | The transcript sources to read; `claude` is the only one known, and any other name is an error |
 | `data` | `data` | Where the archive and database live, relative to the config file |
 | `port` | `4310` | Dashboard port |
 | `timeZone` | the system time zone | Decides which day and hour a request belongs to |
@@ -52,8 +52,8 @@ Copy `insights.config.example.json` to `insights.config.json` in the repository 
 
 ```text
 data/
-├── archive/    copy of the projects folder, append-only, line numbers stable
-└── usage.db    rebuilt from the archive whenever its schema changes
+├── archive/claude/   copy of the projects folder, append-only, line numbers stable
+└── usage.db          rebuilt from the archive whenever its schema changes
 ```
 
 The archive keeps a transcript even after Claude Code deletes it. `data/` is ignored by Git; delete `usage.db` at any time and the next scan rebuilds it.

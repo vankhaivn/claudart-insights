@@ -1,8 +1,8 @@
-// The archive mirrors the host's projects folder: each transcript as gzip members appended in
+// The archive mirrors a provider's transcripts folder: each transcript as gzip members appended in
 // order, so line numbers never change, and every other session-folder file copied as is.
 import { createHash } from "node:crypto";
 import { appendFileSync, closeSync, copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readdirSync, readSync, renameSync, statSync, utimesSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { createInterface } from "node:readline";
 import { createGunzip, gzipSync } from "node:zlib";
 
@@ -18,45 +18,9 @@ const isDir = (p) => {
 };
 const list = (p) => (isDir(p) ? readdirSync(p, { withFileTypes: true }) : []);
 
-// Describe a transcript by its path relative to the projects folder:
-// <slug>/<session>.jsonl (main) or <slug>/<session>/subagents/agent-<id>.jsonl (sub).
-export function describe(rel) {
-  const parts = rel.split(sep);
-  if (parts.length === 2 && parts[1].endsWith(".jsonl")) return { rel, kind: "main", slug: parts[0], sessionId: parts[1].slice(0, -6), agentId: null };
-  if (parts.length === 4 && parts[2] === "subagents" && /^agent-.+\.jsonl$/.test(parts[3]))
-    return { rel, kind: "sub", slug: parts[0], sessionId: parts[1], agentId: parts[3].slice(6, -6) };
-  return null;
-}
-
-// Transcripts and other session-folder files under a projects folder.
-export function listHost(root) {
-  const transcripts = [];
-  const others = [];
-  for (const slug of list(root)) {
-    if (!slug.isDirectory()) continue;
-    const slugDir = join(root, slug.name);
-    for (const entry of list(slugDir)) {
-      if (entry.isFile() && entry.name.endsWith(".jsonl")) transcripts.push(describe(join(slug.name, entry.name)));
-      if (!entry.isDirectory() || !/^[0-9a-f-]{36}$/.test(entry.name)) continue;
-      const walk = (dir) => {
-        for (const e of list(dir)) {
-          const abs = join(dir, e.name);
-          if (e.isDirectory()) walk(abs);
-          else if (e.isFile()) {
-            const d = describe(relative(root, abs));
-            if (d) transcripts.push(d);
-            else others.push(relative(root, abs));
-          }
-        }
-      };
-      walk(join(slugDir, entry.name));
-    }
-  }
-  return { transcripts, others };
-}
-
-// Current-generation transcripts present in the archive, including ones the host has deleted.
-export function listArchived(archiveRoot) {
+// Current-generation transcripts present in a provider's archive folder, including ones the host has deleted;
+// `describe` is the provider's reading of a relative path.
+export function listArchived(archiveRoot, describe) {
   const out = [];
   const walk = (dir) => {
     for (const e of list(dir)) {

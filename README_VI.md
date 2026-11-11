@@ -42,7 +42,7 @@ Sao chép `insights.config.example.json` thành `insights.config.json` ở thư 
 
 | Key | Mặc định | Ý nghĩa |
 | --- | --- | --- |
-| `transcripts` | `~/.claude/projects` | Thư mục projects của Claude Code |
+| `providers` | `{ "claude": { "transcripts": "~/.claude/projects" } }` | Các nguồn transcript cần đọc; hiện chỉ biết `claude`, tên khác sẽ báo lỗi |
 | `data` | `data` | Nơi chứa archive và database, tính từ vị trí file config |
 | `port` | `4310` | Cổng dashboard |
 | `timeZone` | múi giờ của hệ thống | Quyết định request thuộc ngày và giờ nào |
@@ -52,8 +52,8 @@ Sao chép `insights.config.example.json` thành `insights.config.json` ở thư 
 
 ```text
 data/
-├── archive/    bản sao thư mục projects, chỉ thêm vào, số dòng cố định
-└── usage.db    dựng lại từ archive mỗi khi schema đổi
+├── archive/claude/   bản sao thư mục projects, chỉ thêm vào, số dòng cố định
+└── usage.db          dựng lại từ archive mỗi khi schema đổi
 ```
 
 Archive vẫn giữ transcript sau khi Claude Code xoá nó. `data/` bị Git bỏ qua; xoá `usage.db` lúc nào cũng được, lần quét sau sẽ dựng lại.

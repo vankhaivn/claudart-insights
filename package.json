@@ -6,6 +6,12 @@
   "description": "A local dashboard and CLI for your own Claude Code usage and cost",
   "license": "MIT",
   "engines": { "node": ">=25" },
+  "exports": {
+    "./src/*": "./src/*",
+    "./dashboard/src/*": "./dashboard/src/*",
+    "./dashboard/dist/*": "./dashboard/dist/*",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "start": "npm run build && node bin/insights.mjs serve",
     "dev": "vite dashboard",

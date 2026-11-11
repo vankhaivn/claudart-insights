@@ -1,10 +1,10 @@
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from "node:fs";
+import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { appendChunk, archiveLines, archivePath, hashHead, HEAD_BYTES, listArchived, listHost, liveHead, newChunks, rotate, sizeOf, copyOther } from "./archive.mjs";
+import { appendChunk, archiveLines, archivePath, hashHead, HEAD_BYTES, listArchived, liveHead, newChunks, rotate, sizeOf, copyOther } from "./archive.mjs";
 import { FILE_TABLES, openDb, transaction } from "./db.mjs";
 import { derive } from "./derive.mjs";
 import { priceReport, readPrices } from "./prices.mjs";
-import { createIngester } from "./ingest.mjs";
+import { PROVIDERS } from "./providers/index.mjs";
 
 // First timestamp in the opening bytes of a transcript; orders new files so the earlier file owns copied records.
 function peekFirstTs(path) {
@@ -24,39 +24,42 @@ function lineCount(chunk) {
   return n;
 }
 
-export async function scan(config, { sources = [config.transcripts] } = {}) {
+export async function scan(config) {
+  const providers = Object.entries(config.providers).map(([name, p]) => ({ ...PROVIDERS[name], root: p.transcripts, archive: join(config.archive, name) }));
   const db = openDb(config.database);
   const mains = new Set(db.prepare("SELECT session_id FROM files WHERE kind = 'main'").all().map((r) => r.session_id));
-  const ingest = createIngester(db, config.timeZone, (id) => mains.has(id));
+  const ingesters = new Map(providers.map((p) => [p.name, p.createIngester(db, config.timeZone, (id) => mains.has(id))]));
   const totals = { files: 0, bytes: 0, sessions: 0, records: 0, generations: 0, copied: 0 };
   const sessionsBefore = db.prepare("SELECT COUNT(DISTINCT session_id) n FROM files WHERE kind = 'main' AND lines > 0").get().n;
 
-  const getFile = db.prepare("SELECT * FROM files WHERE path = ?");
-  const addFile = db.prepare("INSERT INTO files(path, kind, session_id, agent_id) VALUES (?, ?, ?, ?)");
+  const getFile = db.prepare("SELECT * FROM files WHERE provider = ? AND path = ?");
+  const addFile = db.prepare("INSERT INTO files(provider, path, kind, session_id, agent_id) VALUES (?, ?, ?, ?, ?)");
   const saveCursor = db.prepare("UPDATE files SET offset = ?, lines = ?, head_hash = ?, archive_size = ?, first_ts = coalesce(first_ts, ?), cwd = coalesce(cwd, ?), live = ?, own_first = ?, own_last = ? WHERE id = ?");
   const resetFile = db.prepare("UPDATE files SET generation = generation + 1, offset = 0, lines = 0, head_hash = NULL, archive_size = 0, first_ts = NULL, own_first = NULL, own_last = NULL, cwd = NULL WHERE id = ?");
   const clear = FILE_TABLES.map((t) => db.prepare(`DELETE FROM ${t} WHERE file_id = ?`));
 
-  const fileRow = (d) => getFile.get(d.rel) ?? (addFile.run(d.rel, d.kind, d.sessionId, d.agentId), getFile.get(d.rel));
+  const fileRow = (d) => getFile.get(d.provider, d.rel) ?? (addFile.run(d.provider, d.rel, d.kind, d.sessionId, d.agentId), getFile.get(d.provider, d.rel));
 
-  // Every transcript the host still has or the archive holds, oldest first.
+  // Every transcript a provider's host still has or its archive holds, oldest first.
   const work = new Map();
-  for (const root of sources) {
-    for (const d of listHost(root).transcripts) if (!work.has(d.rel)) work.set(d.rel, { ...d, src: join(root, d.rel) });
+  for (const p of providers) {
+    const base = { provider: p.name, dir: p.archive };
+    for (const d of p.listHost(p.root).transcripts) if (!work.has(`${p.name}/${d.rel}`)) work.set(`${p.name}/${d.rel}`, { ...d, ...base, src: join(p.root, d.rel) });
+    for (const d of listArchived(p.archive, p.describe)) if (!work.has(`${p.name}/${d.rel}`)) work.set(`${p.name}/${d.rel}`, { ...d, ...base, src: null });
   }
-  for (const d of listArchived(config.archive)) if (!work.has(d.rel)) work.set(d.rel, { ...d, src: null });
   for (const d of work.values()) if (d.kind === "main") mains.add(d.sessionId);
   // A continuation starts with the same records as the file it continues, so ties go to the file last written first.
   const jobs = [...work.values()].map((d) => {
-    const row = getFile.get(d.rel);
-    const src = d.src ?? archivePath(config.archive, d.rel);
+    const row = getFile.get(d.provider, d.rel);
+    const src = d.src ?? archivePath(d.dir, d.rel);
     return { d, ts: row?.first_ts ?? (d.src ? peekFirstTs(d.src) : null) ?? "~", mtime: statSync(src).mtimeMs };
   });
   jobs.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : a.mtime - b.mtime));
 
   for (const { d } of jobs) {
     let file = fileRow(d);
-    const gz = archivePath(config.archive, d.rel);
+    const gz = archivePath(d.dir, d.rel);
+    const ingest = ingesters.get(d.provider);
     let firstTs = null;
     let cwd = null;
     let ownFirst = file.own_first;
@@ -104,7 +107,7 @@ export async function scan(config, { sources = [config.transcripts] } = {}) {
         db.exec("ROLLBACK");
         throw err;
       }
-      file = getFile.get(d.rel);
+      file = getFile.get(d.provider, d.rel);
     }
 
     if (!d.src) {
@@ -122,7 +125,7 @@ export async function scan(config, { sources = [config.transcripts] } = {}) {
         resetFile.run(file.id);
       });
       totals.generations++;
-      file = getFile.get(d.rel);
+      file = getFile.get(d.provider, d.rel);
       firstTs = cwd = ownFirst = ownLast = null;
     }
 
@@ -149,24 +152,18 @@ export async function scan(config, { sources = [config.transcripts] } = {}) {
 
   // Other session-folder files; the subagent meta files among them give each subagent its type.
   const copied = new Set();
-  for (const root of sources) {
-    for (const rel of listHost(root).others) {
-      if (copied.has(rel)) continue;
-      copied.add(rel);
-      if (copyOther(join(root, rel), join(config.archive, rel))) totals.copied++;
+  for (const p of providers) {
+    for (const rel of p.listHost(p.root).others) {
+      if (copied.has(`${p.name}/${rel}`)) continue;
+      copied.add(`${p.name}/${rel}`);
+      if (copyOther(join(p.root, rel), join(p.archive, rel))) totals.copied++;
     }
   }
   const putSub = db.prepare("INSERT OR REPLACE INTO subagents(agent_id, session_id, type, tool_use_id) VALUES (?, ?, ?, ?)");
   for (const { d } of jobs) {
     if (d.kind !== "sub") continue;
-    const meta = join(config.archive, d.rel.replace(/\.jsonl$/, ".meta.json"));
-    let parsed = {};
-    try {
-      parsed = JSON.parse(readFileSync(meta, "utf8"));
-    } catch {
-      // No readable meta file: the subagent has no recorded type.
-    }
-    putSub.run(d.agentId, d.sessionId, parsed.agentType ?? null, parsed.toolUseId ?? null);
+    const meta = PROVIDERS[d.provider].subagentMeta(d.dir, d);
+    putSub.run(d.agentId, d.sessionId, meta.type, meta.toolUseId);
   }
 
   derive(db, config);

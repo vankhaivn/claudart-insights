@@ -8,10 +8,12 @@ import { scan } from "./scan.mjs";
 const JSON_TYPE = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 
 // Returns a handler that answers /api/* and resolves true, or resolves false for any other path.
-// onScan receives each scan's totals.
-export function createApi(config, { onScan = () => {} } = {}) {
+// onScan receives each scan's totals. `extra` adds handlers, "METHOD /api/path": () => value, that run in the
+// same queue; a built-in route wins over an extra one of the same name.
+export function createApi(config, { onScan = () => {}, routes: extra = {} } = {}) {
   let queue = Promise.resolve();
   const routes = {
+    ...extra,
     "GET /api/data": () => buildUsageRows(config),
     "POST /api/scan": async () => {
       const t = await scan(config);

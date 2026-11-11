@@ -9,7 +9,7 @@ import { projectOf } from "../src/derive.mjs";
 test("a missing config file means defaults", () => {
   const dir = mkdtempSync(join(tmpdir(), "insights-test-"));
   const c = loadConfig(join(dir, "none.json"));
-  assert.equal(c.transcripts, join(homedir(), ".claude", "projects"));
+  assert.equal(c.providers.claude.transcripts, join(homedir(), ".claude", "projects"));
   assert.equal(c.data, join(dir, "data"));
   assert.equal(c.database, join(dir, "data", "usage.db"));
   assert.equal(c.prices, join(ROOT, "prices.md"));
@@ -36,4 +36,24 @@ test("the project is the nearest folder with .git at or above the cwd, else the 
   assert.deepEqual(projectOf(join(dir, "plain")), { name: "plain", onDisk: true });
   assert.deepEqual(projectOf(join(dir, "gone", "x")), { name: "x", onDisk: false });
   assert.equal(projectOf(null), null);
+});
+
+test("providers default to claude and expand their transcripts path; an unknown one is an error naming it", () => {
+  const dir = mkdtempSync(join(tmpdir(), "insights-test-"));
+  const file = join(dir, "c.json");
+  writeFileSync(file, JSON.stringify({ providers: { claude: { transcripts: "~/x" } } }));
+  assert.deepEqual(loadConfig(file).providers, { claude: { transcripts: join(homedir(), "x") } });
+  assert.equal(loadConfig(join(dir, "none.json")).providers.claude.transcripts, join(homedir(), ".claude", "projects"));
+  writeFileSync(file, JSON.stringify({ providers: { claude: {}, mystery: {} } }));
+  assert.throws(() => loadConfig(file), /unknown provider "mystery"/);
+});
+
+test("a host package's own keys pass through the loader untouched", () => {
+  const dir = mkdtempSync(join(tmpdir(), "insights-test-"));
+  const file = join(dir, "c.json");
+  const own = { sources: ["~/a"], nested: { n: 1 }, flag: true };
+  writeFileSync(file, JSON.stringify({ port: 5001, ...own }));
+  const c = loadConfig(file);
+  assert.deepEqual({ sources: c.sources, nested: c.nested, flag: c.flag }, own);
+  assert.equal(c.port, 5001);
 });

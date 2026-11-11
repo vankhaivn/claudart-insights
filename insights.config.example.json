@@ -1,5 +1,5 @@
 {
-  "transcripts": "~/.claude/projects",
+  "providers": { "claude": { "transcripts": "~/.claude/projects" } },
   "data": "data",
   "port": 4310,
   "timeZone": "Europe/Berlin"

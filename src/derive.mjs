@@ -1,7 +1,7 @@
 // Per-session values computed after every scan from the ingested rows. Cheap: one pass over sessions.
 import { existsSync } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
-import { zoner } from "./ingest.mjs";
+import { zoner } from "./zone.mjs";
 import { missOf, priceAt, readPrices, requestCost, usageCost } from "./prices.mjs";
 
 // The nearest directory at or above cwd that holds .git; without one, cwd's own name. onDisk tells whether cwd
@@ -19,7 +19,7 @@ export function projectOf(cwd) {
 const firstLine = (text) => text.split("\n").find((l) => l.trim())?.trim().slice(0, 80) ?? null;
 
 export function derive(db, config) {
-  const files = db.prepare("SELECT id, session_id, path, cwd, own_first first_ts, own_last last_ts FROM files WHERE kind = 'main'").all();
+  const files = db.prepare("SELECT id, provider, session_id, path, cwd, own_first first_ts, own_last last_ts FROM files WHERE kind = 'main'").all();
   const existing = new Map(db.prepare("SELECT id, project FROM sessions").all().map((s) => [s.id, s.project]));
   const titles = db.prepare("SELECT kind, title FROM titles WHERE file_id = ? ORDER BY line DESC");
   const firstOwner = db.prepare("SELECT text FROM owner_messages WHERE session_id = ? AND kind = 'typed' ORDER BY ts, line LIMIT 1");
@@ -31,10 +31,10 @@ export function derive(db, config) {
   const requestsOf = db.prepare("SELECT model, day, input, output, cache_read, cache_write, cache_write_1h FROM requests WHERE session_id = ?");
   const prices = readPrices(config).rows;
   const zone = zoner(config.timeZone);
-  const upsert = db.prepare(`INSERT INTO sessions(id, slug, cwd, project, title, first_ts, last_ts, cost, cost_incomplete, cost_estimated, price_check,
+  const upsert = db.prepare(`INSERT INTO sessions(id, provider, slug, cwd, project, title, first_ts, last_ts, cost, cost_incomplete, cost_estimated, price_check,
       api_ms, tool_ms, lines_added, lines_removed, carried_from, model_cost)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET slug = excluded.slug, cwd = excluded.cwd, project = excluded.project, title = excluded.title,
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, slug = excluded.slug, cwd = excluded.cwd, project = excluded.project, title = excluded.title,
       first_ts = excluded.first_ts, last_ts = excluded.last_ts, cost = excluded.cost, cost_incomplete = excluded.cost_incomplete,
       cost_estimated = excluded.cost_estimated, price_check = excluded.price_check,
       api_ms = excluded.api_ms, tool_ms = excluded.tool_ms, lines_added = excluded.lines_added, lines_removed = excluded.lines_removed,
@@ -113,7 +113,7 @@ export function derive(db, config) {
           estimated = 1;
         }
       }
-      upsert.run(f.session_id, f.path.split(sep)[0], f.cwd, project, title, f.first_ts, f.last_ts, cost,
+      upsert.run(f.session_id, f.provider, f.path.split(sep)[0], f.cwd, project, title, f.first_ts, f.last_ts, cost,
         c ? (c.incomplete ? 1 : 0) : null, estimated, check ? JSON.stringify(check) : null, api, tool, added, removed, carriedFrom, models ? JSON.stringify(models) : null);
     }
     db.exec("COMMIT");

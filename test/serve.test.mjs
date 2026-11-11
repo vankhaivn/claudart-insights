@@ -79,3 +79,27 @@ test("the port comes from the config file, 4310 when it is absent", () => {
   assert.equal(loadConfig(makeHome().config).port, 4310);
   assert.equal(loadConfig(makeHome({ port: 5000 }).config).port, 5000);
 });
+
+test("extra routes run through the same queue as the built-in ones", async () => {
+  const home = makeHome();
+  writeTranscript(home.transcripts, "demo", sid(91), [user("2026-11-01T01:00:00Z", "start"), assistant("2026-11-01T01:00:05Z", "m1", { output_tokens: 10 })]);
+  const order = [];
+  const routes = {
+    "GET /api/extra": async () => { order.push("extra start"); await new Promise((r) => setTimeout(r, 50)); order.push("extra end"); return { ok: true }; },
+    "GET /api/data": () => "overridden?",
+  };
+  const server = await serve(loadConfig(home.config), { port: 0, dist: fakeDist(), routes, onScan: () => order.push("scan") });
+  const url = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const [extra, scan] = await Promise.all([fetch(`${url}/api/extra`).then((r) => r.json()), fetch(`${url}/api/scan`, { method: "POST" }).then((r) => r.json())]);
+    assert.deepEqual(extra, { ok: true });
+    assert.equal(scan.records, 2);
+    assert.deepEqual(order, ["extra start", "extra end", "scan"]);
+    const data = await fetch(`${url}/api/data`).then((r) => r.json());
+    assert.ok(Array.isArray(data.facts));
+    assert.equal((await fetch(`${url}/api/extra`, { method: "POST" })).status, 404);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});

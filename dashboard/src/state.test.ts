@@ -26,3 +26,11 @@ test("an unknown or broken address falls back to the defaults it cannot read", (
   assert.deepEqual(parseUrl("/", "?from=2026-11-05"), DEFAULTS);
   assert.equal(parseUrl("/sessions/", "").view, "sessions");
 });
+
+test("a view a host package adds is routed like a built-in one, and only when it is declared", () => {
+  assert.equal(parseUrl("/notes", "", ["notes"]).view, "notes");
+  assert.equal(parseUrl("/notes", "").view, "overview");
+  assert.equal(toUrl({ ...DEFAULTS, view: "notes", range: "7" }), "/notes?range=7");
+  const u = new URL(toUrl({ ...DEFAULTS, view: "notes", project: "alpha" }), "http://x");
+  assert.deepEqual([parseUrl(u.pathname, u.search, ["notes"]).view, parseUrl(u.pathname, u.search, ["notes"]).project], ["notes", "alpha"]);
+});

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DateRange } from "./controls/DateRange.tsx";
 import { Select } from "./controls/Select.tsx";
 import { DashContext, type Dash } from "./dash.ts";
+import type { Extra } from "./extra.ts";
 import { makeFmt } from "./format.ts";
 import { T, type Key, type Lang } from "./i18n.tsx";
 import { buildModel, dayAdd, days, slice, type Filter, type Payload } from "./model.ts";
@@ -32,7 +33,7 @@ const ICON: Record<string, string> = {
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   refresh: '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
 };
-const Icon = ({ name }: { name: string }) => <svg viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: ICON[name] }} />;
+const Icon = ({ name, markup }: { name?: string; markup?: string }) => <svg viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: markup ?? ICON[name!] }} />;
 
 async function getJson<R>(url: string, init?: RequestInit): Promise<R> {
   const r = await fetch(url, init);
@@ -43,8 +44,10 @@ async function getJson<R>(url: string, init?: RequestInit): Promise<R> {
 
 type ScanState = { busy: boolean; added?: { sessions: number; records: number }; error?: string };
 
-export function App() {
-  const [url, setUrl] = useState(() => parseUrl(location.pathname, location.search));
+// `extra` adds a second navigation section whose views get the same context as the built-in ones.
+export function App({ extra }: { extra?: Extra }) {
+  const extraIds = useMemo(() => extra?.views.map((v) => v.id) ?? [], [extra]);
+  const [url, setUrl] = useState(() => parseUrl(location.pathname, location.search, extraIds));
   const [lang, setLang] = useState<Lang>(() => {
     const saved = store.get("insights.lang");
     return saved === "en" || saved === "vi" ? saved : navigator.language.toLowerCase().startsWith("vi") ? "vi" : "en";
@@ -59,10 +62,10 @@ export function App() {
 
   useEffect(() => { document.documentElement.lang = lang; document.documentElement.dataset.theme = theme; }, [lang, theme]);
   useEffect(() => {
-    const back = () => { setUrl(parseUrl(location.pathname, location.search)); setLimit(25); };
+    const back = () => { setUrl(parseUrl(location.pathname, location.search, extraIds)); setLimit(25); };
     addEventListener("popstate", back);
     return () => removeEventListener("popstate", back);
-  }, []);
+  }, [extraIds]);
 
   // Scans, then reloads the rows in place; the view and filters stay as they are.
   const refresh = useCallback(async () => {
@@ -117,8 +120,9 @@ export function App() {
   };
   const dash: Dash = { M, S: url, filter, lang, L, t, f, limit, more: () => setLimit((n) => n + 25), set };
   const list = days(filter.from, filter.to), F = slice(M, filter);
-  const nav = (k: View) => <button key={k} onClick={() => set({ view: k })} aria-current={view === k ? "page" : undefined}><Icon name={k} />{t(k)}</button>;
-  const body = { overview: () => <Overview F={F} list={list} />, projects: () => <Projects F={slice(M, { ...filter, project: -1 })} list={list} />, sessions: () => <Sessions F={F} />, models: () => <Models F={F} />, effort: () => <Effort F={F} list={list} />, activity: () => <Activity F={F} list={list} /> }[view]();
+  const ev = extra?.views.find((v) => v.id === view);
+  const nav = (k: View) => <button key={k} onClick={() => set({ view: k })} aria-current={view === k ? "page" : undefined}><Icon name={k} />{t(k as Key)}</button>;
+  const body = ({ overview: () => <Overview F={F} list={list} />, projects: () => <Projects F={slice(M, { ...filter, project: -1 })} list={list} />, sessions: () => <Sessions F={F} />, models: () => <Models F={F} />, effort: () => <Effort F={F} list={list} />, activity: () => <Activity F={F} list={list} /> } as Record<string, () => ReactNode>)[view]?.();
 
   return (
     <DashContext.Provider value={dash}>
@@ -127,6 +131,7 @@ export function App() {
           <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />CLAUDART Insights</div>
           <div className="navlabel">{t("usage")}</div>
           <nav className="nav">{VIEWS.map(nav)}</nav>
+          {extra ? <><div className="navlabel">{extra.label}</div><nav className="nav quiet">{extra.views.map((v) => <button key={v.id} onClick={() => set({ view: v.id })} aria-current={view === v.id ? "page" : undefined}><Icon markup={v.icon} />{v.label}</button>)}</nav></> : null}
           <div className="foot">
             <b>{t("scanned")} {f.scanTime(M.scanned)}</b>{f.int(M.transcripts)} {t("transcripts")}
             {scan.busy ? <span className="ok">{t("scanning")}</span> : scan.added ? <span className="ok">{scan.added.sessions ? L.scanNew(scan.added.sessions) : scan.added.records ? t("scanMore") : t("scanNone")}</span> : null}
@@ -134,13 +139,14 @@ export function App() {
         </aside>
         <main><div className="wrap">
           <div className="top">
-            <h1>{t(view)}</h1>
+            <h1>{ev ? ev.label : t(view as Key)}</h1>
             <div className="tools">
               {refreshButton}
               <div className="seg" role="group">{(["vi", "en"] as const).map((k) => <button key={k} aria-pressed={lang === k} onClick={() => { setLang(k); store.set("insights.lang", k); }}>{k.toUpperCase()}</button>)}</div>
               <button className="icon" aria-label={t("theme")} data-tip={tip(t("theme"), [])} onClick={() => { const v = theme === "dark" ? "light" : "dark"; setTheme(v); store.set("insights.theme", v); }}><Icon name={theme === "dark" ? "sun" : "moon"} /></button>
             </div>
           </div>
+          {ev?.filters === false ? <div style={{ height: 20 }} /> : (
           <div className="filters">
             <div className="seg" role="group">{([["1", "today"], ["7", "d7"], ["14", "d14"], ["30", "d30"], ["all", "all"]] as const).map(([k, l]) => <button key={k} aria-pressed={url.range === k} onClick={() => set({ range: k, from: "", to: "" })}>{t(l)}</button>)}</div>
             <DateRange from={filter.from} to={filter.to} min={M.first} max={M.today} onChange={(from, to) => set({ range: "", from, to })}
@@ -149,9 +155,9 @@ export function App() {
             <Select label={t("model")} value={filter.model < 0 ? "" : url.model} onChange={(v) => set({ model: v })} options={[{ value: "", label: t("allModels") }, ...M.models.map((n) => ({ value: n, label: n }))]} />
             <Select label={t("effort")} value={filter.effort < 0 ? "" : url.effort} onChange={(v) => set({ effort: v })} options={[{ value: "", label: t("allEfforts") }, ...M.levels.map((e) => ({ value: M.efforts[e], label: M.efforts[e] }))]} />
             {filter.project >= 0 || filter.model >= 0 || filter.effort >= 0 ? <button className="field clearall" onClick={() => set({ project: "", model: "", effort: "" })}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>{t("reset")}</button> : null}
-          </div>
+          </div>)}
           {scan.error ? <p className="alert" style={{ margin: "-8px 0 14px" }}>{t("scanFail")}: {scan.error}</p> : null}
-          {body}
+          {ev ? ev.render() : body}
         </div></main>
       </div>
     </DashContext.Provider>
