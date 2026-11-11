@@ -42,7 +42,7 @@ async function getJson<R>(url: string, init?: RequestInit): Promise<R> {
 }
 
 type ScanState = { busy: boolean; added?: { sessions: number; records: number }; error?: string };
-type Progress = { reason: "first" | "rebuild" | "update"; done: number; total: number };
+type Progress = { reason: "first" | "rebuild" | "update"; step: "find" | "read" | "finish"; done: number; total: number; bytes: number; totalBytes: number };
 const REASON = { first: "bootFirst", rebuild: "bootRebuild", update: "bootUpdate" } as const;
 
 // `extra` adds a second navigation section whose views get the same context as the built-in ones.
@@ -119,7 +119,8 @@ export function App({ extra }: { extra?: Extra }) {
   const brand = <div className="brand"><img src={document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href} alt="" />{document.title}</div>;
   if (!M) {
     const failed = loadError && !scan.busy;
-    const share = progress?.total ? progress.done / progress.total : null;
+    // The bar follows the bytes read, so a large transcript moves it too; finding and finishing have no measure of their own.
+    const share = progress?.step === "read" ? (progress.totalBytes ? progress.bytes / progress.totalBytes : progress.total ? progress.done / progress.total : null) : null;
     return (
       <div className="boot" role="status">
         <div className="boot-in">
@@ -129,9 +130,9 @@ export function App({ extra }: { extra?: Extra }) {
             <p className="boot-err">{scan.error ?? loadError}</p>
             <button type="button" className="field clearall" onClick={refresh}>{t("retry")}</button>
           </> : <>
-            <p className="boot-msg">{!scan.busy ? t("loading") : !progress ? t("bootFind") : progress.done === progress.total ? t("bootFinish") : t(REASON[progress.reason])}</p>
+            <p className="boot-msg">{!scan.busy ? t("loading") : !progress || progress.step === "find" ? t("bootFind") : progress.step === "finish" ? t("bootFinish") : t(REASON[progress.reason])}</p>
             <div className={`boot-bar${share === null ? " wait" : ""}`}><span style={share === null ? undefined : { width: `${share * 100}%` }} /></div>
-            <p className="boot-count">{progress?.total ? `${f.int(progress.done)} / ${f.int(progress.total)} ${t("transcripts")}` : "\u00a0"}</p>
+            <p className="boot-count">{progress?.total && progress.step !== "finish" ? `${f.int(progress.done)} / ${f.int(progress.total)} ${t("transcripts")}` : "\u00a0"}</p>
           </>}
         </div>
       </div>

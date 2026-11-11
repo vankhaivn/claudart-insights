@@ -125,11 +125,23 @@ test("a scan reports its progress over the transcripts and why it runs", async (
     await scan(config, { onProgress: (p) => seen.push(p) });
     return seen;
   };
-  assert.deepEqual(await run(), [{ reason: "first", done: 0, total: 2 }, { reason: "first", done: 1, total: 2 }, { reason: "first", done: 2, total: 2 }]);
-  assert.equal((await run())[0].reason, "update");
+  const first = await run();
+  assert.deepEqual(first.map((p) => [p.reason, p.step, p.done, p.total]), [
+    ["first", "find", 0, 2], ["first", "read", 0, 2], ["first", "read", 0, 2], ["first", "read", 1, 2], ["first", "read", 1, 2], ["first", "finish", 2, 2],
+  ]);
+  // The bytes read only grow, and end at the size of the transcripts.
+  const read = first.filter((p) => p.step !== "find");
+  const size = readdirSync(join(home.transcripts, "slug")).reduce((n, f) => n + statSync(join(home.transcripts, "slug", f)).size, 0);
+  assert.ok(read.every((p, k) => p.totalBytes === size && (k === 0 || p.bytes >= read[k - 1].bytes)));
+  assert.equal(read.at(-1).bytes, size);
+  // Nothing new to read weighs nothing.
+  const again = await run();
+  assert.deepEqual([again[0].reason, again.at(-1).totalBytes], ["update", 0]);
   // A database left by an older schema is emptied and read again from the archive.
   const db = new DatabaseSync(config.database);
   db.prepare("UPDATE meta SET value = '0' WHERE key = 'schema'").run();
   db.close();
-  assert.deepEqual((await run()).at(-1), { reason: "rebuild", done: 2, total: 2 });
+  const rebuilt = (await run()).at(-1);
+  assert.deepEqual([rebuilt.reason, rebuilt.step, rebuilt.done, rebuilt.total], ["rebuild", "finish", 2, 2]);
+  assert.ok(rebuilt.totalBytes > 0);
 });

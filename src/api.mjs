@@ -1,7 +1,7 @@
 // The dashboard's JSON API, shared by `serve` and the Vite dev server (`npm run dev`).
 //   GET  /api/data  the rows of the views
 //   POST /api/scan  scans, then answers what it added
-//   GET  /api/scan/progress  { reason, done, total } of the running scan, or null; answered at once, outside the queue
+//   GET  /api/scan/progress  the running scan's progress (see scan in scan.mjs), or null; answered at once, outside the queue
 // Other requests run one at a time, so a read never sees a scan half done and two scans never overlap.
 import { buildUsageRows } from "./dashboard.mjs";
 import { scan } from "./scan.mjs";
