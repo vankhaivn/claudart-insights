@@ -1,0 +1,5 @@
+data/
+node_modules/
+dashboard/dist/
+insights.config.json
+.DS_Store
