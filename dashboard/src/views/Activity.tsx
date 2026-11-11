@@ -29,7 +29,6 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
   );
 
   const tools = toolCalls(M, w.ids).slice(0, 12), tmax = Math.max(1, ...tools.map(([, [c]]) => c));
-  const lmax = Math.max(...la, ...lr, 1), every = hourly ? 3 : Math.ceil(slots.length / 15);
   return (
     <div className="stack">
       <div className="grid kpis">
@@ -48,23 +47,8 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
         </section>
         <section className="card">
           <header><h2>{t("lines")}</h2></header>
-          <ul className="legend"><li><i className="c1" />{t("added")}<b>{f.cmp(w.la)}</b></li><li><i style={{ background: "var(--neg)" }} />{t("removed")}<b>{f.cmp(w.lr)}</b></li></ul>
-          {w.la + w.lr ? <>
-          <div className="chart diverge">
-            <div className="axis"><span style={{ bottom: "100%" }}>{f.cmp(lmax)}</span><span style={{ bottom: "50%" }}>0</span><span style={{ bottom: 0 }}>{f.cmp(lmax)}</span></div>
-            <div className="plot">
-              <div className="zero" />
-              {slots.map((d, i) => (
-                <div key={d} className="col" tabIndex={0} data-tip={tip(hourly ? d + ":00" : f.dshort(d as string), [["c1", t("added"), f.int(la[i])], ["c0", t("removed"), f.int(lr[i])]])}>
-                  <div className="up"><i style={{ height: `${(la[i] / lmax) * 100}%` }} /></div>
-                  <div className="dn"><i style={{ height: `${(lr[i] / lmax) * 100}%` }} /></div>
-                  {i % every === 0 ? <span className="x">{hourly ? d : Number((d as string).slice(8))}</span> : null}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="xpad" />
-          </> : <Empty />}
+          <ul className="legend"><li><i className="c1" />{t("added")}<b>{f.cmp(w.la)}</b></li><li><i className="c4" />{t("removed")}<b>{f.cmp(w.lr)}</b></li></ul>
+          <Columns list={slots} rows={slots.map((_, i) => [la[i], lr[i]])} groups={[{ n: t("added"), c: "c1" }, { n: t("removed"), c: "c4" }]} metric="out" fmt={(v) => f.cmp(v)} />
         </section>
       </div>
       <Rebuilds F={F} />
