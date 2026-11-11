@@ -4,6 +4,8 @@
 //   facts     tokens and cost per session, day, hour, model, effort and main/subagent (from per-request usage)
 //   subagents one row per subagent (type, model, parent model, output tokens)
 //   tools     tool calls and errors per session
+//   skills    per session, each skill's [typed as a command, called by the agent, failed calls, last day used];
+//             skillSources says where each skill was loaded from
 
 export type Run = [effort: number, requests: number];
 export type Session = {
@@ -21,7 +23,11 @@ type RawFact = [number, string, number, number, number, number, number, number, 
 export type Payload = {
   today: string; scanned: string; models: string[]; projects: string[]; types: string[]; efforts: string[]; transcripts: number;
   sessions: Session[]; facts: RawFact[]; subagents: Subagent[]; tools: Record<string, [number, number]>[];
+  skills: Record<string, SkillUse>[]; skillSources: Record<string, SkillSource>;
 };
+export type SkillUse = [command: number, agent: number, errors: number, last: string];
+export const SKILL_SOURCES = ["project", "personal", "plugin", "builtin", "other"] as const;
+export type SkillSource = (typeof SKILL_SOURCES)[number];
 
 export type Model = ReturnType<typeof buildModel>;
 
@@ -39,7 +45,7 @@ export function buildModel(data: Payload) {
     efforts: data.efforts,
     levels: data.efforts.map((_, e) => e).filter((e) => facts.some((f) => f.e === e)), // levels seen, low → max
     first: facts.reduce((a, f) => (f.d < a ? f.d : a), data.today),
-    sessions: data.sessions, subagents: data.subagents, tools: data.tools, facts, projectRank,
+    sessions: data.sessions, subagents: data.subagents, tools: data.tools, skills: data.skills, skillSources: data.skillSources, facts, projectRank,
     pColor: (p: number) => { const r = projectRank.indexOf(p); return r < 5 ? "c" + (r + 1) : "c0"; },
   };
 }
@@ -113,6 +119,19 @@ export function toolCalls(M: Model, sessions: number[]) {
   const by = new Map<string, [number, number]>();
   sessions.forEach((s) => Object.entries(M.tools[s]).forEach(([n, [c, e]]) => { const r = by.get(n) ?? [0, 0]; r[0] += c; r[1] += e; by.set(n, r); }));
   return [...by].sort((a, b) => b[1][0] - a[1][0]);
+}
+
+export type SkillRow = { name: string; source: SkillSource; command: number; agent: number; errors: number; sessions: number; last: string };
+// Skills summed over sessions, by source and then most used first; the same rows as `usage --by skill`.
+export function skillUses(M: Model, sessions: number[]): SkillRow[] {
+  const by = new Map<string, SkillRow>();
+  sessions.forEach((s) => Object.entries(M.skills[s]).forEach(([name, [c, a, e, last]]) => {
+    const r = by.get(name) ?? { name, source: M.skillSources[name], command: 0, agent: 0, errors: 0, sessions: 0, last: "" };
+    r.command += c; r.agent += a; r.errors += e; r.sessions++; if (last > r.last) r.last = last;
+    by.set(name, r);
+  }));
+  const uses = (r: SkillRow) => r.command + r.agent;
+  return [...by.values()].sort((a, b) => SKILL_SOURCES.indexOf(a.source) - SKILL_SOURCES.indexOf(b.source) || uses(b) - uses(a) || a.name.localeCompare(b.name));
 }
 
 export const mainLevel = (runs: Run[]) => { const by = new Map<number, number>(); runs.forEach(([e, q]) => by.set(e, (by.get(e) || 0) + q)); return [...by].sort((a, b) => b[1] - a[1])[0][0]; };

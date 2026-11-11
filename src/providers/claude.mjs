@@ -1,6 +1,7 @@
 // Everything that knows the Claude Code transcript format: where transcripts sit in the projects folder,
 // the shapes of their records, and the subagent meta files. Tool output is never stored.
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { zoner } from "../zone.mjs";
 
@@ -81,6 +82,18 @@ export function ownerText(rec) {
   return kept.length ? kept.join("\n\n") : null;
 }
 
+// Where a skill was loaded from, by the folder the host names when it loads one: the host's own bundled skills,
+// a plugin's, the user's own under ~/.claude/skills, or a project's .claude/skills.
+export function skillSource(dir, home = homedir()) {
+  if (dir.includes("/bundled-skills/")) return "builtin";
+  if (dir.includes("/skills-plugin/") || dir.includes("/.claude/plugins/")) return "plugin";
+  if (dir.startsWith(join(home, ".claude", "skills") + sep)) return "personal";
+  if (dir.includes(`${sep}.claude${sep}skills${sep}`)) return "project";
+  return "other";
+}
+
+const textOf = (content) => (typeof content === "string" ? content : Array.isArray(content) ? content.filter((b) => b?.type === "text").map((b) => b.text ?? "").join("\n") : "");
+
 // hasFile(sessionId): whether a main transcript of that session is known; its records are left to it.
 export function createIngester(db, timeZone, hasFile = () => false) {
   const zone = zoner(timeZone);
@@ -92,6 +105,9 @@ export function createIngester(db, timeZone, hasFile = () => false) {
     owner: db.prepare("INSERT OR IGNORE INTO owner_messages(uuid, file_id, line, session_id, ts, kind, text) VALUES (?, ?, ?, ?, ?, ?, ?)"),
     call: db.prepare("INSERT OR IGNORE INTO tool_calls(id, file_id, line, session_id, agent_id, ts, name, model, is_error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)"),
     result: db.prepare("UPDATE tool_calls SET is_error = ? WHERE id = ?"),
+    skill: db.prepare("INSERT OR IGNORE INTO skills(id, file_id, line, session_id, ts, name, via, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"),
+    skillResult: db.prepare("UPDATE skills SET is_error = ? WHERE id = ?"),
+    skillSource: db.prepare("UPDATE skills SET source = ? WHERE id = ?"),
     compaction: db.prepare("INSERT OR IGNORE INTO compactions(uuid, file_id, session_id, ts) VALUES (?, ?, ?, ?)"),
     cost: db.prepare(`INSERT OR REPLACE INTO cost_states(file_id, line, session_id, start_ms, cost, incomplete, api_ms, tool_ms,
       lines_added, lines_removed, model_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
@@ -153,12 +169,27 @@ export function createIngester(db, timeZone, hasFile = () => false) {
       }
       for (const b of Array.isArray(msg.content) ? msg.content : []) {
         if (b?.type === "tool_use" && b.id) q.call.run(b.id, file.id, line, session, agent, rec.timestamp ?? null, b.name ?? "unknown", msg.model ?? null);
+        // A skill the agent called; a plugin's skill is named plugin:skill. Its folder, when the host loads it, follows.
+        if (b?.type === "tool_use" && b.id && b.name === "Skill") {
+          const name = String(b.input?.skill ?? "unknown").replace(/^\//, "");
+          q.skill.run(b.id, file.id, line, session, rec.timestamp ?? null, name, "agent", name.includes(":") ? "plugin" : null);
+        }
       }
     } else if (rec.type === "user") {
       const content = rec.message?.content;
       for (const b of Array.isArray(content) ? content : []) {
-        if (b?.type === "tool_result" && b.tool_use_id) q.result.run(b.is_error ? 1 : 0, b.tool_use_id);
+        if (b?.type === "tool_result" && b.tool_use_id) {
+          q.result.run(b.is_error ? 1 : 0, b.tool_use_id);
+          q.skillResult.run(b.is_error ? 1 : 0, b.tool_use_id);
+        }
       }
+      const body = textOf(content);
+      // The host loads a skill with a record naming its folder, tied to the agent's call or to the typed command before it.
+      const loaded = rec.isMeta && body.match(/^Base directory for this skill: (.+)/);
+      if (loaded) q.skillSource.run(skillSource(loaded[1].trim()), rec.sourceToolUseID ?? rec.parentUuid ?? "");
+      // A typed slash command; it counts as a skill once the host loads one for it, which a built-in command never does.
+      const command = file.kind === "main" && !rec.isMeta && !rec.isSidechain && body.match(/<command-name>\/?([^<]+)<\/command-name>/);
+      if (command) q.skill.run(rec.uuid, file.id, line, session, rec.timestamp ?? null, command[1].trim(), "command", null);
       if (rec.isCompactSummary) q.compaction.run(rec.uuid, file.id, session, rec.timestamp ?? null);
       if (file.kind === "main") {
         const typed = ownerText(rec);

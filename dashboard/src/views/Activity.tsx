@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
-import { dayAdd, rebuilds, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
+import { dayAdd, rebuilds, skillUses, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
 import { Columns, Delta, Empty, Info, Kpi, tip } from "../ui.tsx";
 
 // What the agent did: time on the model and on tools, owner turns, lines and compactions against the window
-// before; working time per day beside lines per day; and tool calls with their failed part.
+// before; working time per day beside lines per day; tool calls with their failed part beside the skills used.
 const work = (M: Model, F: Fact[]) => {
   const ids = [...new Set(F.map((x) => x.s))], ss = ids.map((s) => M.sessions[s]), add = (k: (s: Session) => number) => ss.reduce((n, s) => n + k(s), 0);
   return { ids, ss, api: add((s) => s.api), tool: add((s) => s.tool), idle: add((s) => Math.max(0, s.dur * 60 - s.api - s.tool)), owner: add((s) => s.owner), compact: add((s) => s.compact), la: add((s) => s.la), lr: add((s) => s.lr) };
@@ -52,6 +52,7 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
         </section>
       </div>
       <Rebuilds F={F} />
+      <div className="grid half">
       <section className="card">
         <header><h2>{t("tools")}</h2><span className="hint">{f.int(tools.reduce((n, [, [c]]) => n + c, 0))} {t("calls")}</span></header>
         {tools.length ? <div className="rank tools">{tools.map(([n, [c, e]]) => [
@@ -60,7 +61,47 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
           <span key={`v${n}`} className="val">{f.int(c)}<small className={e ? "err" : ""}>{f.pct(e / c)} {t("errors")}</small></span>,
         ])}</div> : <Empty />}
       </section>
+      <Skills ids={w.ids} />
+      </div>
     </div>
+  );
+}
+
+const SHOWN = 12;
+const SOURCE = { project: "srcProject", personal: "srcPersonal", plugin: "srcPlugin", builtin: "srcBuiltin", other: "srcOther" } as const;
+
+// Skills by where they were loaded from, most used first: each bar splits what the owner typed as a command from what the
+// agent called on its own, with its failed calls at the end. Past SHOWN rows the rest opens below.
+function Skills({ ids }: { ids: number[] }) {
+  const { M, t, f } = useDash();
+  const [all, setAll] = useState(false);
+  const rows = skillUses(M, ids), uses = rows.reduce((n, r) => n + r.command + r.agent, 0);
+  const top = new Set([...rows].sort((a, b) => b.command + b.agent - (a.command + a.agent)).slice(0, SHOWN).map((r) => r.name));
+  const shown = all ? rows : rows.filter((r) => top.has(r.name));
+  const max = Math.max(1, ...rows.map((r) => r.command + r.agent));
+  return (
+    <section className="card">
+      <header><h2>{t("skills")}</h2><span className="hint">{f.int(uses)} {t("uses")} · {f.int(rows.length)} {t("skillCount")}</span></header>
+      {rows.length ? <>
+        <ul className="legend"><li><i className="c1" />{t("skillTyped")}</li><li><i className="c3" />{t("skillAgent")}</li></ul>
+        <div className="rank tools">{shown.map((r, k) => {
+          const n = r.command + r.agent;
+          return <Fragment key={r.name}>
+            {k === 0 || shown[k - 1].source !== r.source ? <span className="grp">{t(SOURCE[r.source])}</span> : null}
+            <span className="n" title={r.name}>{r.name}</span>
+            <span className="t"><span className="b split" style={{ width: `${(n / max) * 100}%` }} data-tip={tip(r.name, [["c1", t("skillTyped"), f.int(r.command)], ["c3", t("skillAgent"), f.int(r.agent)], ["neg", t("errors"), f.int(r.errors)], ["c0", t("lastUsed"), r.last ? f.dshort(r.last) : "—"]])}>
+              {r.command ? <b className="c1" style={{ width: `${(r.command / n) * 100}%` }} /> : null}
+              {r.agent ? <b className="c3" style={{ width: `${(r.agent / n) * 100}%` }} /> : null}
+              {r.errors ? <i style={{ width: `max(2px, ${(r.errors / n) * 100}%)` }} /> : null}
+            </span></span>
+            <span className="val">{f.int(n)}<small>{f.int(r.sessions)} {t("sess").toLowerCase()}</small></span>
+          </Fragment>;
+        })}</div>
+        {rows.length > SHOWN ? <button type="button" className="disc more" aria-expanded={all} onClick={() => setAll(!all)}>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" /></svg>{all ? t("showFewer") : `${t("seeAll")} (${rows.length})`}
+        </button> : null}
+      </> : <Empty />}
+    </section>
   );
 }
 

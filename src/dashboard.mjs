@@ -22,6 +22,7 @@ export function dashboardData(db, config, now = new Date()) {
     facts: rows.facts.map((f) => [f.s, f.d, f.h, f.m, f.sub, ei(f.e), f.q, f.i, f.o, f.cr, f.cw, f.th, f.c, f.rb && f.rb.map((x) => round(x))]),
     subagents: rows.subagents.map((a) => ({ ...a, type: types.indexOf(a.type) })),
     tools: rows.tools.map(shortToolNames),
+    skills: rows.skills, skillSources: rows.skillSources,
   };
 }
 

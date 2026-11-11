@@ -85,7 +85,7 @@ Chạy `make` không kèm gì để liệt kê các target. CLI đầy đủ:
 ```text
 node bin/insights.mjs scan                  lưu trữ các dòng transcript mới và nạp vào database
 node bin/insights.mjs show <session>:<line> in một bản ghi đã lưu
-node bin/insights.mjs usage [--days n | --since d --until d] [--by day|model|effort|project|session|hour|tool|subagent]
+node bin/insights.mjs usage [--days n | --since d --until d] [--by day|model|effort|project|session|hour|tool|skill|subagent]
                             [--project name] [--model family] [--effort level]
 node bin/insights.mjs prices                bảng giá đối chiếu với bản ghi chi phí của Claude Code
 node bin/insights.mjs serve [--port n]      dashboard đã build tại http://localhost:<port>
@@ -134,6 +134,21 @@ Claude Code giữ cuộc trò chuyện trong prompt cache, nên phần lớn inp
 Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Cột "Cache hết hạn" ở màn hình Phiên làm việc đếm số lần dựng lại sau khi nghỉ trong mỗi phiên.
 
 Không thể giải thích `khác` từ transcript. Ngưỡng 20.000 token và một nửa là quy ước cố định, không phải số Claude Code báo. Model không có dòng giá thì không có chi phí thêm, nhưng lần dựng lại vẫn được đếm.
+
+</details>
+
+<details>
+<summary><b>Skill</b></summary>
+
+Màn hình Hoạt động và lệnh `usage --by skill` đếm từng skill theo tên: số lần bạn gõ nó thành slash command và số lần agent tự gọi, kèm số lần gọi lỗi. Một slash command chỉ được tính khi Claude Code nạp một skill cho nó, nên lệnh có sẵn như `/compact` không được tính. Mỗi skill được xếp theo nơi Claude Code nạp nó:
+
+| Nguồn | Thư mục |
+| --- | --- |
+| Project | `.claude/skills/` trong một repository |
+| Cá nhân | `~/.claude/skills/` |
+| Plugin | một plugin đã cài; skill của nó có tên `plugin:skill` |
+| Có sẵn | skill đi kèm Claude Code |
+| Khác | thư mục không thuộc các loại trên, hoặc skill không transcript nào ghi thư mục |
 
 </details>
 

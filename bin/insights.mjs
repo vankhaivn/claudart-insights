@@ -11,7 +11,7 @@ const USAGE = `usage: node bin/insights.mjs <command> [options]
 
   scan                                  archive new transcript lines and ingest them
   show <session>:<line>                 print one archived record
-  usage [--days n | --since d --until d] [--by day|model|effort|project|session|hour|tool|subagent]
+  usage [--days n | --since d --until d] [--by day|model|effort|project|session|hour|tool|skill|subagent]
         [--project name] [--model family] [--effort level]
   prices                                the price table checked against the host's cost records
   serve [--port n]                      the built dashboard on http://localhost:<port>
