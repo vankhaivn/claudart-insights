@@ -89,7 +89,7 @@ function Skills({ ids }: { ids: number[] }) {
           return <Fragment key={r.name}>
             {k === 0 || shown[k - 1].source !== r.source ? <span className="grp">{t(SOURCE[r.source])}</span> : null}
             <span className="n" title={r.name}>{r.name}</span>
-            <span className="t"><span className="b split" style={{ width: `${(n / max) * 100}%` }} data-tip={tip(r.name, [["c1", t("skillTyped"), f.int(r.command)], ["c3", t("skillAgent"), f.int(r.agent)], ["neg", t("errors"), f.int(r.errors)], ["c0", t("lastUsed"), r.last ? f.dshort(r.last) : "—"]])}>
+            <span className="t"><span className="b parts" style={{ width: `${(n / max) * 100}%` }} data-tip={tip(r.name, [["c1", t("skillTyped"), f.int(r.command)], ["c3", t("skillAgent"), f.int(r.agent)], ["neg", t("errors"), f.int(r.errors)], ["c0", t("lastUsed"), r.last ? f.dshort(r.last) : "—"]])}>
               {r.command ? <b className="c1" style={{ width: `${(r.command / n) * 100}%` }} /> : null}
               {r.agent ? <b className="c3" style={{ width: `${(r.agent / n) * 100}%` }} /> : null}
               {r.errors ? <i style={{ width: `max(2px, ${(r.errors / n) * 100}%)` }} /> : null}

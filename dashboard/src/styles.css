@@ -185,9 +185,9 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 /* activity: skills grouped by source; a bar splits typed commands from the agent's own calls */
 .rank .grp { grid-column: 1 / -1; margin-top: 6px; color: var(--ink2); font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .rank .grp:first-child { margin-top: 0; }
-.rank .b.split { position: relative; justify-content: flex-start; background: none; }
-.rank .b.split b { flex: none; height: 100%; }
-.rank .b.split i { position: absolute; top: 0; right: 0; }
+.rank .b.parts { position: relative; justify-content: flex-start; background: none; }
+.rank .b.parts b { flex: none; height: 100%; }
+.rank .b.parts i { position: absolute; top: 0; right: 0; }
 .card > .disc.more { margin-top: 10px; }
 #tip .r i.neg { background: var(--neg); }
 
