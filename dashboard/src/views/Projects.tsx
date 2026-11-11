@@ -99,7 +99,8 @@ function Treemap({ rows, open }: { rows: ({ p: number } & Sum)[]; open: (p: numb
     ro.observe(el); setW(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-  const h = w < 640 ? 260 : 340;
+  // Tall enough that mid-sized projects get a labelled tile: about 0.55 of the width, kept between 300 and 700 px.
+  const h = w < 640 ? 300 : Math.round(Math.min(700, Math.max(340, w * 0.55)));
   const value = (r: Sum) => (S.metric === "cost" ? r.tt.c : S.metric === "sess" ? r.n : r.tt.o);
   const items = rows.map((r) => ({ p: r.p, v: value(r) })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
   const total = items.reduce((n, x) => n + x.v, 0), rects = squarify(items.map((x) => x.v), { x: 0, y: 0, w, h });
@@ -108,8 +109,10 @@ function Treemap({ rows, open }: { rows: ({ p: number } & Sum)[]; open: (p: numb
       {!items.length ? <div className="empty">{t("nodata")}</div> : w ? items.map((x, k) => {
         const r = rects[k], c = M.pColor(x.p), name = M.projects[x.p], text = `${f.fmt(S.metric, x.v)} · ${f.pct(x.v / total)}`;
         const label = r.w > 84 && r.h > 46;
+        // A tile thinner than its own border cannot be seen or clicked; the table below still lists the project.
+        if (r.w < 4 || r.h < 4) return null;
         return (
-          <button key={x.p} className={`tile ${c}`} style={{ left: r.x, top: r.y, width: r.w, height: r.h }}
+          <button key={x.p} className={`tile ${c}`} style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: Math.min(10, r.w / 3, r.h / 3), padding: label ? undefined : 0 }}
             aria-label={`${name}: ${text}`} data-tip={label ? undefined : tip(name, [[c, t(S.metric), text]])} onClick={() => open(x.p)}>
             {label ? <><b>{name}</b><span>{text}</span></> : null}
           </button>
