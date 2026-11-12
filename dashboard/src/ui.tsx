@@ -175,6 +175,7 @@ export function Mix({ arr, className = "mix", style, tip: about }: { arr: number
 // A session's output tokens per model, the main thread and subagents apart, largest first.
 export function SessionMix({ r }: { r: SessionRow }) {
   const { M, t, f } = useDash();
+  if (r.mix.filter((v) => v > 0).length < 2) return null; // one model needs no bar
   const sum = r.mix.reduce((a, b) => a + b, 0) || 1;
   const parts = r.mix.flatMap((v, k) => [{ k, n: v - r.subMix[k], who: t("mainThread") }, { k, n: r.subMix[k], who: t("subs") }]).filter((p) => p.n > 0);
   parts.sort((a, b) => b.n - a.n);
@@ -186,7 +187,7 @@ export function RunsStrip({ runs, wide }: { runs: Run[]; wide?: boolean }) {
   const { M, t, f } = useDash();
   const sum = runs.reduce((n, r) => n + r[1], 0) || 1;
   return (
-    <span className={`mix${wide ? " wide" : ""}`} style={{ width: wide ? 160 : 64 }} data-tip={tip(t("effort"), runs.map(([e, q]): TipRow => ["v" + e, M.efforts[e], f.int(q) + " " + t("requests").toLowerCase()]))}>
+    <span className={`mix${wide ? " wide" : ""}`} style={wide ? { width: 160 } : undefined} data-tip={tip(t("effort"), runs.map(([e, q]): TipRow => ["v" + e, M.efforts[e], f.int(q) + " " + t("requests").toLowerCase()]))}>
       {runs.map(([e, q], k) => <i key={k} className={`v${e}`} style={{ width: `${(q / sum) * 100}%` }} />)}
     </span>
   );

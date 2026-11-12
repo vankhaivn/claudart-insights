@@ -132,7 +132,7 @@ Claude Code giữ cuộc trò chuyện trong prompt cache, nên phần lớn inp
 | Sau khi nghỉ | Khoảng cách từ request trước của luồng dài hơn tuổi thọ của cache: 1 giờ nếu lần ghi cache gần nhất của luồng có cache 1h, nếu không thì 5 phút. Chia thành 5 đến 15 phút, 15 đến 60 phút và trên 1 giờ |
 | Khác | Mọi trường hợp còn lại |
 
-Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Cột "Cache hết hạn" ở màn hình Phiên làm việc đếm số lần dựng lại sau khi nghỉ trong mỗi phiên.
+Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Màn hình Phiên làm việc ghi số lần dựng lại sau khi nghỉ của mỗi phiên, là số lần cache hết hạn, dưới tiêu đề phiên.
 
 Không thể giải thích `khác` từ transcript. Ngưỡng 20.000 token và một nửa là quy ước cố định, không phải số Claude Code báo. Model không có dòng giá thì không có chi phí thêm, nhưng lần dựng lại vẫn được đếm.
 

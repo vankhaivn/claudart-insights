@@ -9,7 +9,7 @@ test("the address bar holds the view and every filter, and reads back the same",
     [{}, "/"],
     [{ view: "sessions", range: "7" }, "/sessions?range=7"],
     [{ view: "effort", range: "", from: "2026-11-01", to: "2026-11-03", project: "alpha", model: "Opus", effort: "xhigh", metric: "cost" }, "/effort?from=2026-11-01&to=2026-11-03&project=alpha&model=Opus&effort=xhigh&metric=cost"],
-    [{ view: "sessions", sort: "project", dir: 1, q: "cda fix" }, "/sessions?q=cda+fix&sort=project&dir=asc"],
+    [{ view: "sessions", sort: "turns", dir: 1, q: "cda fix" }, "/sessions?q=cda+fix&sort=turns&dir=asc"],
     [{ view: "activity", range: "all" }, "/activity?range=all"],
     [{ metric: "cost", split: "kind", heat: "out" }, "/?metric=cost&split=kind&heat=out"],
   ];

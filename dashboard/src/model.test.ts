@@ -15,8 +15,9 @@ test("rebuilds sums the facts' vectors per cause and splits the idle ones by gap
   assert.equal(rebuilds([]).idle.n, 0);
 });
 
-test("the cache lapses column is a sort key of the address bar", () => {
-  assert.equal(parseUrl("/sessions", "sort=lapses").sort, "lapses");
+test("a sort the sessions table has no column for falls back to the start", () => {
+  for (const k of ["project", "tps", "subs", "lapses"]) assert.equal(parseUrl("/sessions", `sort=${k}`).sort, "start");
+  assert.equal(parseUrl("/sessions", "sort=ctx").sort, "ctx");
 });
 
 test("skillUses sums sessions per skill, listed by source and then most used", () => {

@@ -6,7 +6,7 @@ export const VIEWS = ["overview", "projects", "sessions", "models", "effort", "a
 // A built-in view, or the id of one a host package adds.
 export type View = string;
 export const RANGES = ["1", "7", "14", "30", "all"] as const;
-export const SORTS = ["start", "project", "dur", "turns", "out", "cost", "tps", "subs", "lapses", "ctx"] as const;
+export const SORTS = ["start", "dur", "turns", "out", "cost", "ctx"] as const;
 export type SortKey = (typeof SORTS)[number];
 
 export type UrlState = {
