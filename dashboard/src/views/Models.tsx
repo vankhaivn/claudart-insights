@@ -1,5 +1,5 @@
 import { useDash } from "../dash.ts";
-import { behavior, costParts, totals, vsHigh, type Behavior, type Fact } from "../model.ts";
+import { behavior, costParts, mainLevel, totals, vsHigh, type Behavior, type Fact } from "../model.ts";
 import { Disclosure } from "../controls/Disclosure.tsx";
 import { Empty, Info, Legend, Rank, Swatch, tip, useCostKinds, type TipRow } from "../ui.tsx";
 
@@ -98,7 +98,7 @@ function Behaviors({ B }: { B: Behavior[] }) {
   );
 }
 
-// Each effort level's share of requests, output and cost, with the level whose cost departs most from its requests named
+// Each effort level's share of sessions, requests, output, thinking and cost, with the level whose cost departs most from its requests named
 // above; beside it, what one request writes at each level, model by model.
 function Efforts({ F }: { F: Fact[] }) {
   const { M, t, L, f } = useDash();
@@ -106,7 +106,7 @@ function Efforts({ F }: { F: Fact[] }) {
   if (!lv.length) return null;
   const total = (pick: (x: Fact) => number) => lv.map((e) => F.reduce((n, x) => n + (x.e === e ? pick(x) : 0), 0));
   const share = (arr: number[]) => { const sum = arr.reduce((a, b) => a + b, 0) || 1; return arr.map((v) => v / sum); };
-  const q = total((x) => x.q), o = total((x) => x.o), c = total((x) => x.c), sq = share(q), so = share(o), sc = share(c);
+  const q = total((x) => x.q), o = total((x) => x.o), th = total((x) => x.th), c = total((x) => x.c), sq = share(q), so = share(o), sth = share(th), sc = share(c);
   let k = 0;
   lv.forEach((_, i) => { if (Math.abs(sc[i] - sq[i]) > Math.abs(sc[k] - sq[k])) k = i; });
   const lead = lv.length > 1 ? <p className="lead">{(sc[k] >= sq[k] ? L.leadMore : L.leadLess)(M.efforts[lv[k]], f.pct(sq[k]), f.pct(sc[k]))}</p> : null;
@@ -116,6 +116,8 @@ function Efforts({ F }: { F: Fact[] }) {
   ];
   // Sessions whose main thread changed level; the Sessions table draws their levels.
   const ss = [...new Set(F.filter((x) => !x.sub).map((x) => x.s))].map((s) => M.sessions[s]), sw = ss.filter((x) => x.runs.length > 1);
+  // Each session once, under the level its main thread ran most.
+  const n = lv.map((e) => ss.filter((x) => x.runs.length && mainLevel(x.runs) === e).length), sn = share(n);
   // What effort controls: how much a request writes (thinking included) at each level, model by model, and against
   // the same model's high within the sessions that ran both, since most sessions keep one level and the levels would
   // otherwise compare different work. Cost per request follows the context more than the effort, so it stays in the tooltip.
@@ -130,7 +132,7 @@ function Efforts({ F }: { F: Fact[] }) {
         <header><h2>{t("effShare")}</h2><span className="hint">{f.int(sw.length)} / {f.int(ss.length)} {t("switches")}</span></header>
         {lead}
         <ul className="legend">{lv.map((e) => <li key={e}><i className={`v${e}`} />{M.efforts[e]}</li>)}</ul>
-        <div className="shares">{bar(t("requests"), sq, q, f.int)}{bar(t("out"), so, o, f.cmp)}{bar(t("cost"), sc, c, f.usd)}</div>
+        <div className="shares">{bar(t("sess"), sn, n, f.int)}{bar(t("requests"), sq, q, f.int)}{bar(t("out"), so, o, f.cmp)}{bar(t("thinking"), sth, th, f.cmp)}{bar(t("cost"), sc, c, f.usd)}</div>
       </section>
       <section className="card">
         <header><div className="ttl"><h2>{t("price")}</h2><Info label={t("howToRead")}><p>{t("priceInfo")}</p></Info></div><span className="hint">token</span></header>
