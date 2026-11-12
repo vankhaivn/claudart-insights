@@ -1,7 +1,7 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { dayAdd, rebuilds, skillUses, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
-import { ChartSeg, Columns, Delta, Empty, Heat, HeatSeg, Info, Kpi, tip } from "../ui.tsx";
+import { ChartSeg, Columns, Delta, Empty, Heat, HeatSeg, Info, Kpi, Stats, tip } from "../ui.tsx";
 
 // What the agent did: time on the model and on tools, owner turns, lines, compactions and agent time per owner turn
 // against the window before; working time per day beside the hours of the week it fell in; lines per day; where the cache was rebuilt;
@@ -78,7 +78,10 @@ function Tools({ ids }: { ids: number[] }) {
   return (
     <section className="card">
       <header><h2>{t("tools")}</h2><span className="hint">{f.int(calls)} {t("calls")} · {f.int(rows.length)} {t("toolCount")}</span></header>
-      {errs ? <p className="lead">{L.toolLead(f.int(errs), f.pct(errs / calls), f.pct(worst[1][1] / errs), worst[0])}</p> : null}
+      {errs ? <Stats items={[
+        { label: t("failed"), value: f.int(errs), tone: "err", sub: L.ofCalls(f.pct(errs / calls)) },
+        { label: L.fromTool(worst[0]), value: f.pct(worst[1][1] / errs), meter: [worst[1][1] / errs, "cneg"], sub: t("ofFailures") },
+      ]} /> : null}
       {rows.length ? <div className="rank tools">{shown.map(([n, [c, e]]) => [
         <span key={`n${n}`} className="n" title={n}>{n}</span>,
         <span key={`t${n}`} className="t"><span className="b" style={{ width: `${(c / tmax) * 100}%` }} data-tip={tip(n, [["c1", t("calls"), f.int(c)], ["neg", t("errors"), f.int(e)]])}>{e ? <i style={{ width: `max(2px, ${(e / c) * 100}%)` }} /> : null}</span></span>,
@@ -159,7 +162,10 @@ function Rebuilds({ F }: { F: Fact[] }) {
       </section>
       <section className="card">
         <header><h2>{t("idleGap")}</h2><span className="hint">{t("rbIdle")}: {f.int(r.idle.n)}</span></header>
-        {r.idle.n ? <p className="lead">{L.idleLead(f.usd(r.idle.extra / r.idle.n), f.pct(r.gaps[2] / r.idle.n))}</p> : null}
+        {r.idle.n ? <Stats items={[
+          { label: t("perBreak"), value: f.usd(r.idle.extra / r.idle.n), sub: t("onAverage") },
+          { label: t("overHour"), value: f.pct(r.gaps[2] / r.idle.n), meter: [r.gaps[2] / r.idle.n, "c1"], sub: t("ofRebuilds") },
+        ]} /> : null}
         {r.idle.n ? <div className="rank">{gaps.map((label, k) => [
           <span key={`n${k}`} className="n">{label}</span>,
           <span key={`t${k}`} className="t">{r.gaps[k] ? <span className="b" style={{ width: `${(r.gaps[k] / gmax) * 100}%` }} /> : null}</span>,

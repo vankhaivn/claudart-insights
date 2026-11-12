@@ -203,13 +203,34 @@ export function Heat({ F, by }: { F: Fact[]; by: "req" | "out" }) {
         <span />
         {Array.from({ length: 24 }, (_, h) => <span key={`l${h}`} className="cl">{h % 3 === 0 ? h : ""}</span>)}
       </div>
-      <dl className="hstats">
-        <div><dt>{t("peak")}</dt><dd>{L.wd[peak[0]]}, {peak[1]}:00</dd><span>{show(max)} {label.toLowerCase()}</span></div>
-        <div><dt>{t("weekend")}</dt><dd>{f.pct(weekend / all)}</dd><span>{label.toLowerCase()}</span></div>
-        <div><dt>22:00–6:00</dt><dd>{f.pct(night / all)}</dd><span>{label.toLowerCase()}</span></div>
-        <div><dt>{t("sameHour")}</dt><dd>{f.int(mid)}</dd><span>{L.atMost(f.int(most))}</span></div>
-      </dl>
+      <Stats items={[
+        { label: t("peak"), value: <><i className="hsw" style={m("90%")} />{L.wd[peak[0]]}, {peak[1]}:00</>, sub: `${show(max)} ${label.toLowerCase()}` },
+        { label: t("weekend"), value: f.pct(weekend / all), meter: [weekend / all, "cseq"], sub: label.toLowerCase() },
+        { label: "22:00–6:00", value: f.pct(night / all), meter: [night / all, "cseq"], sub: label.toLowerCase() },
+        { label: t("sameHour"), value: f.int(mid), dots: [mid, most], sub: L.atMost(f.int(most)) },
+      ]} />
     </>
+  );
+}
+
+// A row of figures under a chart: a label, the figure, and under it a meter (a share, in a series color), dots (a typical
+// count out of the most) or a line of context. tone colors the figure itself, for errors only; money stays neutral.
+export type Stat = { label: ReactNode; value: ReactNode; sub?: ReactNode; meter?: [number, string]; dots?: [number, number]; tone?: string };
+export function Stats({ items }: { items: Stat[] }) {
+  return (
+    <dl className="hstats">
+      {items.map((x, k) => (
+        <div key={k}>
+          <dt>{x.label}</dt>
+          <dd className={x.tone}>{x.value}</dd>
+          {x.meter ? <span className="meter"><i className={x.meter[1]} style={{ width: `${Math.min(1, Math.max(0, x.meter[0])) * 100}%` }} /></span> : null}
+          {x.dots && x.dots[1] <= 20 ? <span className="dots">{Array.from({ length: x.dots[1] }, (_, i) => <i key={i} className={i < x.dots![0] ? "on" : ""} />)}</span> : null}
+          {/* Keeps the line under the figure level with the tiles that draw a meter or dots. */}
+          {!x.meter && !(x.dots && x.dots[1] <= 20) && items.some((y) => y.meter || y.dots) ? <span className="gap" /> : null}
+          {x.sub ? <span className="sub">{x.sub}</span> : null}
+        </div>
+      ))}
+    </dl>
   );
 }
 

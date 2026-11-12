@@ -100,6 +100,7 @@ td .spark { margin: 0; }
 :root[data-theme="dark"] .split i.v3, :root[data-theme="dark"] .split i.v4 { color: #0b0b0b; }
 .lead { margin: 0 0 16px; font-size: 15.5px; line-height: 1.5; }
 .lead b { font-weight: 650; }
+.lead.accent { padding: 2px 0 2px 12px; border-left: 3px solid; }
 .shares { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 10px 14px; }
 .shares > span { color: var(--ink2); font-size: 12.5px; }
 .shares .split { margin: 0; }
@@ -163,8 +164,12 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .heat .cell { aspect-ratio: 1 / 1; max-height: 26px; width: 100%; border-radius: 3px; background: color-mix(in srgb, var(--seq) var(--m), var(--wash)); }
 .heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
 .hstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
-.hstats div { display: grid; gap: 2px; min-width: 0; }
-.hstats dt { color: var(--ink2); font-size: 12px; } .hstats dd { margin: 0; font-size: 18px; font-weight: 600; white-space: nowrap; } .hstats span { color: var(--muted); font-size: 12px; }
+.hstats div { display: grid; align-content: start; gap: 2px; min-width: 0; }
+.hstats dt { color: var(--ink2); font-size: 12px; } .hstats dd { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 20px; font-weight: 650; white-space: nowrap; } .hstats .sub { color: var(--muted); font-size: 12px; }
+.hstats dd.err { color: var(--neg); } .hstats + .rank, .hstats + .legend, .hstats + .rows { margin-top: 18px; } .lead + .hstats, header + .hstats { margin-top: 2px; }
+.hstats .gap { display: block; height: 16px; } .hstats .meter { display: block; height: 6px; margin: 6px 0 4px; border-radius: 3px; background: var(--wash); overflow: hidden; } .hstats .meter i { display: block; height: 100%; border-radius: 3px; }
+.hstats .dots { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; height: 7px; margin: 5px 0 4px; } .hstats .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--wash); box-shadow: inset 0 0 0 1px var(--base); } .hstats .dots i.on { background: var(--seq); box-shadow: none; }
+.hstats .hsw { width: 12px; height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--seq) var(--m), var(--wash)); } .cseq { background: var(--seq); } .cneg { background: var(--neg); }
 .split { display: flex; gap: 2px; height: 28px; margin: 4px 0 12px; }
 .split i { display: flex; align-items: center; padding: 0 9px; border-radius: 4px; color: #fff; font-size: 12.5px; font-style: normal; font-weight: 600; overflow: hidden; white-space: nowrap; } .split i:empty { padding: 0; }
 .split i.c4 { color: #0b0b0b; } .split i.c0 { color: var(--ink); }

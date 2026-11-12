@@ -109,7 +109,7 @@ function Efforts({ F }: { F: Fact[] }) {
   const q = total((x) => x.q), o = total((x) => x.o), th = total((x) => x.th), c = total((x) => x.c), sq = share(q), so = share(o), sth = share(th), sc = share(c);
   let k = 0;
   lv.forEach((_, i) => { if (Math.abs(sc[i] - sq[i]) > Math.abs(sc[k] - sq[k])) k = i; });
-  const lead = lv.length > 1 ? <p className="lead">{(sc[k] >= sq[k] ? L.leadMore : L.leadLess)(M.efforts[lv[k]], f.pct(sq[k]), f.pct(sc[k]))}</p> : null;
+  const lead = lv.length > 1 ? <p className="lead accent" style={{ borderColor: `var(--v${lv[k]}, var(--s0))` }}>{(sc[k] >= sq[k] ? L.leadMore : L.leadLess)(M.efforts[lv[k]], f.pct(sq[k]), f.pct(sc[k]))}</p> : null;
   const bar = (label: string, sh: number[], raw: number[], fm: (n: number) => string) => [
     <span key={`l${label}`}>{label}</span>,
     <div key={`b${label}`} className="split">{lv.map((e, i) => (sh[i] ? <i key={e} className={`v${e}`} style={{ width: `${sh[i] * 100}%` }} data-tip={tip(M.efforts[e], [["v" + e, label, fm(raw[i]) + " · " + f.pct(sh[i])]])}>{sh[i] >= 0.14 ? f.pct(sh[i]) : ""}</i> : null))}</div>,

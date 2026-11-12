@@ -1,6 +1,6 @@
 import { useDash } from "../dash.ts";
 import { mainLevel, totals, type Fact } from "../model.ts";
-import { Empty, Legend, Mix, tip, type TipRow } from "../ui.tsx";
+import { Empty, Legend, Mix, Stats, tip, type TipRow } from "../ui.tsx";
 
 // The subagent story: how much of each model's output subagents wrote, which models each parent model's subagents
 // ran on, the subagent types, and the effort they ran at, which is often not the parent's.
@@ -32,7 +32,7 @@ export function Subagents({ F }: { F: Fact[] }) {
     if (p < 0 || p > 4 || x.e > 4) continue;
     if (x.e < p) lo += x.q; else if (x.e > p) hi += x.q; else same += x.q;
   }
-  const ranked = lo + hi + same, pct = (v: number) => (v ? f.pct(v / ranked) : null);
+  const ranked = lo + hi + same;
   const subEff = M.models.map((n, m) => ({ n, m, c: subLv.map((e) => SF.reduce((a, x) => a + (x.m === m && x.e === e ? x.q : 0), 0)) })).filter((r) => r.c.some(Boolean));
   return (
     <div className="stack">
@@ -54,7 +54,10 @@ export function Subagents({ F }: { F: Fact[] }) {
         </section>
         <section className="card">
           <header><h2>{t("routedTitle")}</h2><span className="hint">{f.int(subs.length)} {t("subs").toLowerCase()}</span></header>
-          {subs.length ? <p className="lead">{L.routedLead(f.pct(moved / subs.length), f.pct(subCost / (all.c || 1)), f.usd(subCost))}</p> : null}
+          {subs.length ? <Stats items={[
+            { label: t("otherModel"), value: f.pct(moved / subs.length), meter: [moved / subs.length, "csub"], sub: t("ofSubagents") },
+            { label: t("subCost"), value: f.pct(subCost / (all.c || 1)), meter: [subCost / (all.c || 1), "csub"], sub: L.ofAllCost(f.usd(subCost)) },
+          ]} /> : null}
           <Legend groups={models} metric="sess" />
           {routes.length ? <div className="rows">{routes.map((r) => {
             const sum = r.row.reduce((a, b) => a + b, 0);
@@ -77,7 +80,10 @@ export function Subagents({ F }: { F: Fact[] }) {
         </section>
         <section className="card">
           <header><h2>{t("subEffort")}</h2><span className="hint">{t("requests").toLowerCase()}</span></header>
-          {ranked ? <p className="lead">{L.subEffLead(pct(lo), pct(hi))}</p> : null}
+          {ranked ? <Stats items={[
+            { label: t("belowMain"), value: f.pct(lo / ranked), meter: [lo / ranked, "v1"], sub: t("ofSubReq") },
+            { label: t("aboveMain"), value: f.pct(hi / ranked), meter: [hi / ranked, "v3"], sub: t("ofSubReq") },
+          ]} /> : null}
           {subEff.length ? <>
             <Legend groups={subLv.map((e) => ({ n: M.efforts[e], c: "v" + e }))} metric="sess" />
             <div className="rows">{subEff.map((r) => {
