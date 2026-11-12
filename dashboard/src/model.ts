@@ -17,9 +17,10 @@ export type Session = {
 };
 // rb is null unless a request of the fact rebuilt the cache; else [count, rewritten tokens, extra cost] per cause in
 // CAUSES order, then the idle gaps from 5 to 15 minutes, from 15 to 60 minutes and over an hour (summed over the fact's requests).
-export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number; rb: number[] | null };
+// k is null unless part of the fact's cost was priced; else that cost as [reading the context, writing the cache, output].
+export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number; rb: number[] | null; k: number[] | null };
 export type Subagent = { s: number; type: number; m: number; parent: number; o: number };
-type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number, number[] | null];
+type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number, number[] | null, number[] | null];
 export type Payload = {
   today: string; scanned: string; models: string[]; projects: string[]; types: string[]; efforts: string[]; transcripts: number;
   sessions: Session[]; facts: RawFact[]; subagents: Subagent[]; tools: Record<string, [number, number]>[];
@@ -35,7 +36,7 @@ export const dayAdd = (day: string, n: number) => new Date(Date.parse(day + "T00
 export const days = (from: string, to: string) => { const out: string[] = []; for (let d = from; d <= to; d = dayAdd(d, 1)) out.push(d); return out; };
 
 export function buildModel(data: Payload) {
-  const facts: Fact[] = data.facts.map(([s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb]) => ({ s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb }));
+  const facts: Fact[] = data.facts.map(([s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb, k]) => ({ s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb, k }));
   const sumOut = (p: number) => facts.reduce((n, f) => n + (data.sessions[f.s].p === p ? f.o : 0), 0);
   const projectRank = data.projects.map((_, i) => i).sort((a, b) => sumOut(b) - sumOut(a));
   return {
@@ -52,6 +53,7 @@ export function buildModel(data: Payload) {
 
 export type Filter = { from: string; to: string; project: number; model: number; effort: number };
 export type Metric = "out" | "cost" | "sess";
+export type Split = "model" | "kind";
 
 export function slice(M: Model, f: Filter, from = f.from, to = f.to) {
   return M.facts.filter((x) => x.d >= from && x.d <= to && (f.project < 0 || M.sessions[x.s].p === f.project) && (f.model < 0 || x.m === f.model) && (f.effort < 0 || x.e === f.effort));
@@ -68,12 +70,35 @@ export function rebuilds(F: Fact[]): Rebuilds {
   return { start: at("start"), compaction: at("compaction"), idle: at("idle"), other: at("other"), gaps: v.slice(RB_GAPS) };
 }
 
+// A cost as [reading the context, writing the cache, output, what the price table cannot split]: the last part is a
+// model without a price row, or a cost the host charged without a request in the transcript; under 1% it is dropped.
+export function costParts(c: number, k: number[]) {
+  const rest = c - k.reduce((a, b) => a + b, 0);
+  return [...k, rest > c * 0.01 ? rest : 0];
+}
+
+// Cost per day, or per hour when list holds hours, split as costParts splits it.
+export function byDayKinds(F: Fact[], list: (string | number)[]) {
+  const slot = typeof list[0] === "number" ? (f: Fact) => f.h : (f: Fact) => f.d;
+  const idx = new Map<string | number, number>(list.map((d, i) => [d, i]));
+  const rows = list.map(() => [0, 0, 0, 0]);
+  for (const f of F) {
+    const i = idx.get(slot(f));
+    if (i === undefined) continue;
+    const k = f.k ?? [0, 0, 0];
+    rows[i][0] += k[0]; rows[i][1] += k[1]; rows[i][2] += k[2]; rows[i][3] += f.c - k[0] - k[1] - k[2];
+  }
+  // A rounding remainder is not a part of its own.
+  for (const r of rows) if (r[3] < (r[0] + r[1] + r[2] + r[3]) * 0.01) r[3] = 0;
+  return rows;
+}
+
 export type Totals = ReturnType<typeof totals>;
 export function totals(M: Model, F: Fact[]) {
-  const a = { o: 0, c: 0, i: 0, cr: 0, cw: 0, q: 0, th: 0, n: 0, hit: 0, tps: 0, sess: new Set<number>() };
-  for (const f of F) { a.o += f.o; a.c += f.c; a.i += f.i; a.cr += f.cr; a.cw += f.cw; a.q += f.q; a.th += f.th; a.sess.add(f.s); }
+  const a = { o: 0, c: 0, i: 0, cr: 0, cw: 0, q: 0, th: 0, n: 0, hit: 0, ctx: 0, tps: 0, k: [0, 0, 0], sess: new Set<number>() };
+  for (const f of F) { a.o += f.o; a.c += f.c; a.i += f.i; a.cr += f.cr; a.cw += f.cw; a.q += f.q; a.th += f.th; a.sess.add(f.s); f.k?.forEach((x, j) => { a.k[j] += x; }); }
   const ss = [...a.sess].map((s) => M.sessions[s]);
-  a.n = a.sess.size; a.hit = a.cr / (a.cr + a.cw + a.i || 1);
+  a.n = a.sess.size; a.hit = a.cr / (a.cr + a.cw + a.i || 1); a.ctx = context(a);
   // Speed counts only sessions whose host record gives API time; a running session has none yet.
   const timed = ss.filter((s) => s.api > 0);
   a.tps = timed.reduce((n, s) => n + s.out, 0) / (timed.reduce((n, s) => n + s.api, 0) || 1);
@@ -102,16 +127,19 @@ export function group(F: Fact[], key: (f: Fact) => number, metric: Metric) {
   return new Map([...m].map(([k, v]) => [k, v instanceof Set ? v.size : v]));
 }
 
-export type SessionRow = { s: number; o: number; c: number; cr: number; cw: number; i: number; mix: number[]; subMix: number[]; lapses: number; x: Session; hit: number };
+// The context one request carries: what it read as input, from the cache or wrote to it.
+export const context = (a: { i: number; cr: number; cw: number; q: number }) => (a.q ? (a.i + a.cr + a.cw) / a.q : 0);
+
+export type SessionRow = { s: number; o: number; c: number; cr: number; cw: number; i: number; q: number; mix: number[]; subMix: number[]; lapses: number; x: Session; hit: number; ctx: number };
 export function sessionRows(M: Model, F: Fact[]): SessionRow[] {
-  const m = new Map<number, Omit<SessionRow, "x" | "hit">>();
+  const m = new Map<number, Omit<SessionRow, "x" | "hit" | "ctx">>();
   for (const f of F) {
     let r = m.get(f.s);
-    if (!r) m.set(f.s, (r = { s: f.s, o: 0, c: 0, cr: 0, cw: 0, i: 0, mix: M.models.map(() => 0), subMix: M.models.map(() => 0), lapses: 0 }));
-    r.o += f.o; r.c += f.c; r.cr += f.cr; r.cw += f.cw; r.i += f.i; r.mix[f.m] += f.o; if (f.sub) r.subMix[f.m] += f.o;
+    if (!r) m.set(f.s, (r = { s: f.s, o: 0, c: 0, cr: 0, cw: 0, i: 0, q: 0, mix: M.models.map(() => 0), subMix: M.models.map(() => 0), lapses: 0 }));
+    r.o += f.o; r.c += f.c; r.cr += f.cr; r.cw += f.cw; r.i += f.i; r.q += f.q; r.mix[f.m] += f.o; if (f.sub) r.subMix[f.m] += f.o;
     if (f.rb) r.lapses += f.rb[RB_IDLE];
   }
-  return [...m.values()].map((r) => ({ ...r, x: M.sessions[r.s], hit: r.cr / (r.cr + r.cw + r.i || 1) }));
+  return [...m.values()].map((r) => ({ ...r, x: M.sessions[r.s], hit: r.cr / (r.cr + r.cw + r.i || 1), ctx: context(r) }));
 }
 
 // Tool calls and errors summed over sessions, most called first.

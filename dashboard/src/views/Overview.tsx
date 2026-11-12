@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { useDash } from "../dash.ts";
-import { byDay, dayAdd, group, sessionRows, slice, slotsOf, totals, type Fact } from "../model.ts";
+import { byDay, byDayKinds, costParts, dayAdd, group, sessionRows, slice, slotsOf, totals, type Fact } from "../model.ts";
 import { Disclosure } from "../controls/Disclosure.tsx";
-import { Columns, CostCell, Delta, Empty, Heat, Kpi, Legend, MetricSeg, Rank, SessionMix, Title, tip, useCostFlags, type Side } from "../ui.tsx";
+import { Columns, CostCell, Delta, Empty, Heat, HeatSeg, Kpi, Legend, MetricSeg, Rank, SessionMix, SplitSeg, Title, tip, useCostFlags, useCostKinds, type Side } from "../ui.tsx";
 
 export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
   const { M, S, filter, t, f, set } = useDash();
@@ -12,9 +12,15 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
   const daily = (pick: (x: Fact[]) => number) => list.map((d) => pick(F.filter((x) => x.d === d)));
   const tile = (label: string, value: ReactNode, d: ReactNode, series: number[]) => <Kpi label={label} value={value} d={d} series={series} />;
   const metric = S.metric, flags = useCostFlags(F);
-  const groups = metric === "sess" ? [{ n: t("sess"), c: "c1" }] : M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
+  // Cost can split by what it paid for instead of by model; the part that cannot be split shows only when present.
+  const kinds = useCostKinds(), byKind = metric === "cost" && S.split === "kind";
   const slots = slotsOf(list), hourly = slots !== list;
-  const rows = metric === "sess" ? byDay(F, slots, () => 0, groups, "sess") : byDay(F, slots, (x) => x.m, groups, metric);
+  const kindRows = byKind ? byDayKinds(F, slots) : [];
+  const keep = byKind && kindRows.some((r) => r[3]) ? 4 : 3;
+  const groups = byKind ? kinds.slice(0, keep) : metric === "sess" ? [{ n: t("sess"), c: "c1" }] : M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
+  const rows = byKind ? kindRows.map((r) => r.slice(0, keep)) : metric === "sess" ? byDay(F, slots, () => 0, groups, "sess") : byDay(F, slots, (x) => x.m, groups, metric);
+  // The window's cost by kind, with the tokens behind each part: input counts with the cache reads it sits beside.
+  const spent = costParts(now.c, now.k), tokens = [now.i + now.cr, now.cw, now.o, 0];
   const sums = groups.map((_, k) => rows.reduce((n, r) => n + r[k], 0));
   const gm = group(F, (x) => x.m, metric), gp = group(F, (x) => M.sessions[x.s].p, metric);
   const models = M.models.map((n, i) => ({ n, c: "c" + (i + 1), v: gm.get(i) || 0 })).filter((r) => r.v).sort((a, b) => b.v - a.v);
@@ -32,7 +38,7 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
       </div>
       <div className="grid two">
         <section className="card">
-          <header><h2>{hourly ? t("perHour") : t("perDay")}</h2><MetricSeg /></header>
+          <header><h2>{hourly ? t("perHour") : t("perDay")}</h2><div className="segs">{metric === "cost" ? <SplitSeg /> : null}<MetricSeg /></div></header>
           <Legend groups={groups} sums={sums} metric={metric} />
           <Columns list={slots} rows={rows} groups={groups} metric={metric} />
           <Disclosure label={hourly ? t("hourlyTable") : t("dailyTable")}>
@@ -47,9 +53,9 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
         <div className="stack">
           <section className="card"><header><h2>{t("byModel")}</h2><span className="hint">{metric === "sess" ? t("sess") : metric === "cost" ? t("cost") : t("out")}</span></header>{models.length ? <Rank rows={models} metric={metric} color /> : <Empty />}</section>
           <section className="card">
-            <header><h2>{t("kinds")}</h2><span className="hint">token</span></header>
-            {now.q ? <>
-              <Rank rows={[{ n: t("cacheRead"), v: now.cr }, { n: t("cacheWrite"), v: now.cw }, { n: t("out"), v: now.o }, { n: t("input"), v: now.i }].map((r) => ({ x: "", ...r }))} metric="out" />
+            <header><h2>{t("costByKind")}</h2><span className="hint">{t("cost")}</span></header>
+            {now.c ? <>
+              <Rank rows={kinds.map((k, j) => ({ ...k, v: spent[j], x: tokens[j] ? `${f.pct(spent[j] / now.c)} · ${f.cmp(tokens[j])} token` : f.pct(spent[j] / now.c) })).filter((r) => r.v)} metric="cost" color />
               <p className="note">{t("ofOut")}: <b>{f.pct(now.th / (now.o || 1))}</b> thinking · <b>{f.pct(subOut / (now.o || 1))}</b> subagent</p>
             </> : <Empty />}
           </section>
@@ -57,7 +63,7 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
       </div>
       <div className="grid half">
         <section className="card"><header><h2>{t("topProjects")}</h2><button className="link" onClick={() => set({ view: "projects" })}>{t("seeAll")} →</button></header>{projects.length ? <Rank rows={projects} metric={metric} /> : <Empty />}</section>
-        <section className="card"><header><h2>{t("hours")}</h2><span className="hint">{t("out")}</span></header><Heat F={F} /></section>
+        <section className="card"><header><h2>{t("hours")}</h2><HeatSeg /></header><Heat F={F} by={S.heat} /></section>
       </div>
       <section className="card">
         <header><h2>{t("topSessions")}</h2><button className="link" onClick={() => set({ view: "sessions" })}>{t("seeAll")} →</button></header>

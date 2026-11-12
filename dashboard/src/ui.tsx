@@ -90,6 +90,22 @@ export function Legend({ groups, sums, metric, style }: { groups: Group[]; sums?
   );
 }
 
+// The parts of a cost, in costParts order, with their neutral colors; the last one is only outlined.
+export function useCostKinds(): Group[] {
+  const { t } = useDash();
+  return [{ n: t("kRead"), c: "k0" }, { n: t("kWrite"), c: "k1" }, { n: t("kOut"), c: "k2" }, { n: t("kRest"), c: "kx" }];
+}
+
+// How a cost chart splits its columns: by model or by what the money paid for.
+export function SplitSeg() {
+  const { S, t, set } = useDash();
+  return (
+    <div className="seg" role="group">
+      {(["model", "kind"] as const).map((k) => <button key={k} aria-pressed={S.split === k} onClick={() => set({ split: k })}>{t(k === "model" ? "splitModel" : "splitKind")}</button>)}
+    </div>
+  );
+}
+
 export function MetricSeg() {
   const { S, t, set } = useDash();
   return (
@@ -117,24 +133,36 @@ export function Rank({ rows, metric, color }: { rows: RankRow[]; metric: Metric;
   );
 }
 
-export function Heat({ F }: { F: Fact[] }) {
+// Activity per weekday and hour, by requests (each step the agent took, whatever its context or output) or by output.
+export function Heat({ F, by }: { F: Fact[]; by: "req" | "out" }) {
   const { t, f, L } = useDash();
+  const label = by === "req" ? t("requests") : t("out"), show = by === "req" ? f.int : f.cmp;
   const g = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
   let max = 0, peak = [0, 0];
-  for (const x of F) { const wd = (new Date(x.d + "T00:00:00Z").getUTCDay() + 6) % 7; g[wd][x.h] += x.o; if (g[wd][x.h] > max) { max = g[wd][x.h]; peak = [wd, x.h]; } }
+  for (const x of F) { const wd = (new Date(x.d + "T00:00:00Z").getUTCDay() + 6) % 7; g[wd][x.h] += by === "req" ? x.q : x.o; if (g[wd][x.h] > max) { max = g[wd][x.h]; peak = [wd, x.h]; } }
   if (!max) return <Empty />;
   return (
     <>
       <div className="heat">
         {g.map((row, wd) => [
           <span key={`r${wd}`} className="rl">{L.wd[wd]}</span>,
-          ...row.map((v, h) => <span key={`${wd}-${h}`} className="cell" tabIndex={-1} style={m(`${v ? Math.round(10 + 80 * Math.sqrt(v / max)) : 0}%`)} data-tip={tip(L.wd[wd] + " · " + h + ":00", [["c1", t("out"), f.cmp(v)]])} />),
+          ...row.map((v, h) => <span key={`${wd}-${h}`} className="cell" tabIndex={-1} style={m(`${v ? Math.round(10 + 80 * Math.sqrt(v / max)) : 0}%`)} data-tip={tip(L.wd[wd] + " · " + h + ":00", [["c1", label, show(v)]])} />),
         ])}
         <span />
         {Array.from({ length: 24 }, (_, h) => <span key={`l${h}`} className="cl">{h % 3 === 0 ? h : ""}</span>)}
       </div>
-      <p className="note">{t("peak")}: <b>{L.wd[peak[0]]}, {peak[1]}:00</b> · {f.cmp(max)} {t("out").toLowerCase()}</p>
+      <p className="note">{t("peak")}: <b>{L.wd[peak[0]]}, {peak[1]}:00</b> · {show(max)} {label.toLowerCase()}</p>
     </>
+  );
+}
+
+// What the hour heatmap counts.
+export function HeatSeg() {
+  const { S, t, set } = useDash();
+  return (
+    <div className="seg" role="group">
+      {(["req", "out"] as const).map((k) => <button key={k} aria-pressed={S.heat === k} onClick={() => set({ heat: k })}>{t(k === "req" ? "requests" : "out")}</button>)}
+    </div>
   );
 }
 
