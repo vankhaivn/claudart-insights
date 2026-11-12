@@ -117,28 +117,30 @@ export function Models({ F }: { F: Fact[] }) {
 
 // How each model works, one ranked panel per figure; a model without enough base for a figure is left out of it.
 function Behaviors({ B }: { B: Behavior[] }) {
-  const { M, t, f } = useDash();
-  const panel = (title: string, pick: (b: Behavior) => number | null, show: (v: number) => string, base: (b: Behavior) => TipRow) => {
-    const rows = B.filter((b) => pick(b) !== null).sort((a, b) => pick(b)! - pick(a)!);
+  const { M, t, L, f } = useDash();
+  // Every model is listed; one without enough base for the figure comes last with a dash, and why() says what it lacks.
+  const panel = (title: string, pick: (b: Behavior) => number | null, show: (v: number) => string, base: (b: Behavior) => TipRow, why: (b: Behavior) => string) => {
+    const rows = [...B].sort((a, b) => (pick(b) ?? -1) - (pick(a) ?? -1));
     return (
       <div className="panel">
         <h3>{title}</h3>
-        {rows.length ? <Rank metric="out" color fmt={show} rows={rows.map((b) => ({ n: M.models[b.m], c: `c${b.m + 1}`, v: pick(b)!, x: "", tip: tip(M.models[b.m], [base(b)]) }))} /> : <Empty />}
+        {rows.some((b) => pick(b) !== null) ? <Rank metric="out" color fmt={show} rows={rows.map((b) => ({ n: M.models[b.m], c: `c${b.m + 1}`, v: pick(b) ?? 0, x: "", tip: tip(M.models[b.m], [base(b)]), none: pick(b) === null ? why(b) : undefined }))} /> : <Empty />}
       </div>
     );
   };
+  const fewReq = (b: Behavior) => L.fewReq(f.int(b.q));
   if (!B.some((b) => b.out !== null)) return null;
   const req = (b: Behavior): TipRow => [`c${b.m + 1}`, t("requests"), f.int(b.q)];
   return (
     <section className="card">
       <header><h2>{t("behave")}</h2></header>
       <div className="panels">
-        {panel(t("bOut"), (b) => b.out, f.cmp, req)}
-        {panel(t("bThink"), (b) => b.think, f.pct, req)}
-        {panel(t("bSteps"), (b) => b.steps, f.dec, (b) => [`c${b.m + 1}`, t("ownerTurns"), f.int(b.turns)])}
-        {panel(t("bTools"), (b) => b.tools, f.dec, req)}
-        {panel(t("bFail"), (b) => b.fail, f.pct, (b) => [`c${b.m + 1}`, t("tools"), f.int(b.calls)])}
-        {panel(t("bSpeed"), (b) => b.tps, (v) => `${f.int(v)} ${t("tps")}`, (b) => [`c${b.m + 1}`, t("oneModel"), f.int(b.timed)])}
+        {panel(t("bOut"), (b) => b.out, f.cmp, req, fewReq)}
+        {panel(t("bThink"), (b) => b.think, f.pct, req, fewReq)}
+        {panel(t("bSteps"), (b) => b.steps, f.dec, (b) => [`c${b.m + 1}`, t("ownerTurns"), f.int(b.turns)], (b) => (b.main ? L.fewTurns(f.int(b.turns)) : t("onlySub")))}
+        {panel(t("bTools"), (b) => b.tools, f.dec, req, fewReq)}
+        {panel(t("bFail"), (b) => b.fail, f.pct, (b) => [`c${b.m + 1}`, t("tools"), f.int(b.calls)], (b) => L.fewCalls(f.int(b.calls)))}
+        {panel(t("bSpeed"), (b) => b.tps, (v) => `${f.int(v)} ${t("tps")}`, (b) => [`c${b.m + 1}`, t("oneModel"), f.int(b.timed)], (b) => L.fewAlone(b.timed))}
       </div>
     </section>
   );

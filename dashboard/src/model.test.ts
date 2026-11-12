@@ -67,6 +67,6 @@ test("how each model works needs a base for each figure, and speed only sessions
     f(3, 0, 0, 5, 100), f(3, 1, 1, 30, 300, { tc: 3 })];
   const M = { models: ["a", "b"], facts: F, sessions: [session(10, 1500), session(5, 500), session(5, 500), session(20, 400)] } as unknown as Model;
   const [a, b] = behavior(M, F);
-  assert.deepEqual(a, { m: 0, q: 35, turns: 20, calls: 30, timed: 3, out: 2600 / 35, think: 500 / 2600, steps: 25 / 20, tools: 30 / 35, fail: 2 / 30, tps: 2500 / 20 });
-  assert.deepEqual(b, { m: 1, q: 30, turns: 0, calls: 3, timed: 0, out: 10, think: 0, steps: null, tools: 0.1, fail: null, tps: null });
+  assert.deepEqual(a, { m: 0, q: 35, main: 25, turns: 20, calls: 30, timed: 3, out: 2600 / 35, think: 500 / 2600, steps: 25 / 20, tools: 30 / 35, fail: 2 / 30, tps: 2500 / 20 });
+  assert.deepEqual(b, { m: 1, q: 30, main: 0, turns: 0, calls: 3, timed: 0, out: 10, think: 0, steps: null, tools: 0.1, fail: null, tps: null });
 });

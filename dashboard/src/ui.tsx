@@ -146,7 +146,8 @@ export function MetricSeg() {
 }
 
 // x replaces the share shown after the value; tip goes on the bar. fmt replaces the metric's format.
-export type RankRow = { n: string; v: number; c?: string; x?: string; tip?: string; onClick?: () => void };
+// A row with none has no figure: it shows a dash, and none says why in the tooltip.
+export type RankRow = { n: string; v: number; c?: string; x?: string; tip?: string; none?: string; onClick?: () => void };
 export function Rank({ rows, metric, color, fmt }: { rows: RankRow[]; metric: Metric; color?: boolean; fmt?: (v: number) => string }) {
   const { f } = useDash();
   const show = fmt ?? ((v: number) => f.fmt(metric, v));
@@ -157,8 +158,8 @@ export function Rank({ rows, metric, color, fmt }: { rows: RankRow[]; metric: Me
         const name = <>{r.c ? <i className={r.c} /> : null}{r.n}</>;
         return [
           r.onClick ? <button key={`n${k}`} className="n" onClick={r.onClick}>{name}</button> : <span key={`n${k}`} className="n">{name}</span>,
-          <span key={`t${k}`} className="t" data-tip={r.tip}><span className={`b ${color && r.c ? r.c : ""}`} style={{ display: "block", width: `${(r.v / max) * 100}%` }} /></span>,
-          <span key={`v${k}`} className="val">{show(r.v)}{r.x === "" ? null : <small>{r.x ?? f.pct(r.v / sum)}</small>}</span>,
+          <span key={`t${k}`} className="t" data-tip={r.none ? tip(r.n, [["c0", r.none, ""]]) : r.tip} tabIndex={r.none ? 0 : undefined}>{r.none ? null : <span className={`b ${color && r.c ? r.c : ""}`} style={{ display: "block", width: `${(r.v / max) * 100}%` }} />}</span>,
+          <span key={`v${k}`} className="val">{r.none ? "—" : show(r.v)}{r.x === "" || r.none ? null : <small>{r.x ?? f.pct(r.v / sum)}</small>}</span>,
         ];
       })}
     </div>

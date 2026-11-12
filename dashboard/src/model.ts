@@ -188,20 +188,20 @@ export function vsHigh(F: Fact[], m: number, e: number, high: number): { r: numb
 // of at least BASE requests, turns or calls, else it is null. Speed counts sessions that ran only this model, subagents
 // included, since the host gives API time per session; it needs at least 3 such sessions.
 export const BASE = 20;
-export type Behavior = { m: number; q: number; turns: number; calls: number; timed: number; out: number | null; think: number | null; steps: number | null; tools: number | null; fail: number | null; tps: number | null };
+export type Behavior = { m: number; q: number; main: number; turns: number; calls: number; timed: number; out: number | null; think: number | null; steps: number | null; tools: number | null; fail: number | null; tps: number | null };
 export function behavior(M: Model, F: Fact[]): Behavior[] {
   const only = new Map<number, number>(); // session → its one model, or -1 when it ran several
   for (const f of M.facts) { const m = only.get(f.s); only.set(f.s, m === undefined || m === f.m ? f.m : -1); }
   const sessions = new Set(F.map((f) => f.s));
   return M.models.map((_, m) => {
     const x = F.filter((f) => f.m === m), sum = (k: (f: Fact) => number) => x.reduce((n, f) => n + k(f), 0);
-    const q = sum((f) => f.q), o = sum((f) => f.o), turns = sum((f) => f.ot), calls = sum((f) => f.tc);
+    const q = sum((f) => f.q), main = sum((f) => (f.sub ? 0 : f.q)), o = sum((f) => f.o), turns = sum((f) => f.ot), calls = sum((f) => f.tc);
     const timed = [...sessions].filter((s) => only.get(s) === m).map((s) => M.sessions[s]).filter((s) => s.api > 0);
     const api = timed.reduce((n, s) => n + s.api, 0);
     return {
-      m, q, turns, calls, timed: timed.length,
+      m, q, main, turns, calls, timed: timed.length,
       out: q >= BASE ? o / q : null, think: q >= BASE && o ? sum((f) => f.th) / o : null,
-      steps: turns >= BASE ? sum((f) => (f.sub ? 0 : f.q)) / turns : null, tools: q >= BASE ? calls / q : null,
+      steps: turns >= BASE ? main / turns : null, tools: q >= BASE ? calls / q : null,
       fail: calls >= BASE ? sum((f) => f.te) / calls : null, tps: timed.length >= 3 && api ? timed.reduce((n, s) => n + s.out, 0) / api : null,
     };
   }).filter((b) => b.q);
