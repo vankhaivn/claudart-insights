@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { byDayKinds, context, costParts, rebuilds, skillUses, type Fact, type Model } from "./model.ts";
+import { byDayKinds, context, costParts, rebuilds, skillUses, vsHigh, type Fact, type Model } from "./model.ts";
 import { parseUrl } from "./state.ts";
 
 const fact = (rb: number[] | null): Fact => ({ s: 0, d: "2026-11-01", h: 0, m: 0, sub: 0, e: 0, q: 1, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb, k: null });
@@ -46,4 +46,15 @@ test("cost per day splits each fact's priced parts and puts the rest of its cost
   const f = (d: string, c: number, k: number[] | null): Fact => ({ ...fact(null), d, c, k });
   const rows = byDayKinds([f("2026-11-01", 4, [1, 1, 1, 1]), f("2026-11-01", 3, null), f("2026-11-02", 2, [1, 0.5, 0.5, 0])], ["2026-11-01", "2026-11-02"]);
   assert.deepEqual(rows, [[1, 1, 1, 1, 3], [1, 0.5, 0.5, 0, 0]]);
+});
+
+test("effort against high compares the same sessions, as the median of their ratios", () => {
+  const f = (s: number, sub: number, e: number, q: number, o: number): Fact => ({ ...fact(null), s, sub, e, q, o });
+  // Sessions 0-2 ran medium (1) at half, 0.8 and 0.6 of their high (2); session 3 ran only medium, at a far higher
+  // output, and session 4 has too few medium requests: neither counts. Session 0's subagents are compared apart.
+  const F = [f(0, 0, 1, 10, 500), f(0, 0, 2, 10, 1000), f(1, 0, 1, 5, 400), f(1, 0, 2, 5, 500), f(2, 0, 1, 20, 1200), f(2, 0, 2, 20, 2000),
+    f(3, 0, 1, 50, 50000), f(4, 0, 1, 4, 100), f(4, 0, 2, 9, 900), f(0, 1, 1, 5, 5000), f(0, 1, 2, 4, 100)];
+  assert.deepEqual(vsHigh(F, 0, 1, 2), { r: 0.6, n: 3 });
+  assert.deepEqual(vsHigh(F.filter((x) => x.s !== 2), 0, 1, 2), { r: null, n: 2 });
+  assert.deepEqual(vsHigh(F, 1, 1, 2), { r: null, n: 0 });
 });

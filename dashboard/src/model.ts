@@ -164,4 +164,21 @@ export function skillUses(M: Model, sessions: number[]): SkillRow[] {
   return [...by.values()].sort((a, b) => SKILL_SOURCES.indexOf(a.source) - SKILL_SOURCES.indexOf(b.source) || uses(b) - uses(a) || a.name.localeCompare(b.name));
 }
 
+// Output per request at level e against level `high` on model m, within the same work: each session's main thread
+// and its subagents apart, where both levels ran at least 5 requests; the median of those ratios, so no long session
+// outweighs the rest, and only when 3 sessions or more have both. n counts those sessions.
+export function vsHigh(F: Fact[], m: number, e: number, high: number): { r: number | null; n: number } {
+  const by = new Map<string, { s: number; q: number[]; o: number[] }>();
+  for (const f of F) {
+    if (f.m !== m || (f.e !== e && f.e !== high)) continue;
+    const key = `${f.s}|${f.sub}`, u = by.get(key) ?? by.set(key, { s: f.s, q: [0, 0], o: [0, 0] }).get(key)!, j = f.e === e ? 0 : 1;
+    u.q[j] += f.q; u.o[j] += f.o;
+  }
+  const pairs = [...by.values()].filter((u) => u.q[0] >= 5 && u.q[1] >= 5 && u.o[1] > 0);
+  const n = new Set(pairs.map((u) => u.s)).size;
+  if (n < 3) return { r: null, n };
+  const ratios = pairs.map((u) => u.o[0] / u.q[0] / (u.o[1] / u.q[1])).sort((a, b) => a - b), mid = ratios.length >> 1;
+  return { r: ratios.length % 2 ? ratios[mid] : (ratios[mid - 1] + ratios[mid]) / 2, n };
+}
+
 export const mainLevel = (runs: Run[]) => { const by = new Map<number, number>(); runs.forEach(([e, q]) => by.set(e, (by.get(e) || 0) + q)); return [...by].sort((a, b) => b[1] - a[1])[0][0]; };
