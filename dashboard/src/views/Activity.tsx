@@ -3,13 +3,16 @@ import { useDash } from "../dash.ts";
 import { dayAdd, rebuilds, skillUses, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
 import { ChartSeg, Columns, Delta, Empty, Heat, HeatSeg, Info, Kpi, tip } from "../ui.tsx";
 
-// What the agent did: time on the model and on tools, owner turns, lines and compactions against the window
-// before; working time per day beside the hours of the week it fell in; lines per day; where the cache was rebuilt;
+// What the agent did: time on the model and on tools, owner turns, lines, compactions and agent time per owner turn
+// against the window before; working time per day beside the hours of the week it fell in; lines per day; where the cache was rebuilt;
 // tool calls with their failed part beside the skills used.
 const work = (M: Model, F: Fact[]) => {
   const ids = [...new Set(F.map((x) => x.s))], ss = ids.map((s) => M.sessions[s]), add = (k: (s: Session) => number) => ss.reduce((n, s) => n + k(s), 0);
   return { ids, ss, api: add((s) => s.api), tool: add((s) => s.tool), idle: add((s) => Math.max(0, s.dur * 60 - s.api - s.tool)), owner: add((s) => s.owner), compact: add((s) => s.compact), la: add((s) => s.la), lr: add((s) => s.lr) };
 };
+
+// How long the agent worked, waiting for the model or running tools, for each owner turn.
+const perTurn = (w: { api: number; tool: number; owner: number }) => (w.owner ? (w.api + w.tool) / w.owner : 0);
 
 export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
   const { M, S, filter, t, f } = useDash();
@@ -38,6 +41,7 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
         {kpi(t("ownerTurns"), f.int(w.owner), w.owner, p?.owner, daily((s) => s.owner))}
         {kpi(t("linesAR"), <>{f.cmp(w.la)} <small>/ {f.cmp(w.lr)}</small></>, w.la + w.lr, p ? p.la + p.lr : undefined, daily((s) => s.la + s.lr))}
         {kpi(t("compactions"), f.int(w.compact), w.compact, p?.compact, daily((s) => s.compact))}
+        {kpi(t("perTurn"), f.dur(perTurn(w) / 60), perTurn(w), p ? perTurn(p) : undefined, list.map((d) => { const ss = w.ss.filter((s) => s.day === d), o = ss.reduce((n, s) => n + s.owner, 0); return o ? ss.reduce((n, s) => n + s.api + s.tool, 0) / o : 0; }))}
       </div>
       <div className="grid half">
         <section className="card">

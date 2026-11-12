@@ -162,6 +162,9 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .heat .cl { color: var(--muted); font-size: 11px; text-align: left; padding-top: 4px; }
 .heat .cell { aspect-ratio: 1 / 1; max-height: 26px; width: 100%; border-radius: 3px; background: color-mix(in srgb, var(--seq) var(--m), var(--wash)); }
 .heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
+.hstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
+.hstats div { display: grid; gap: 2px; min-width: 0; }
+.hstats dt { color: var(--ink2); font-size: 12px; } .hstats dd { margin: 0; font-size: 18px; font-weight: 600; white-space: nowrap; } .hstats span { color: var(--muted); font-size: 12px; }
 .split { display: flex; gap: 2px; height: 28px; margin: 4px 0 12px; }
 .split i { display: flex; align-items: center; padding: 0 9px; border-radius: 4px; color: #fff; font-size: 12.5px; font-style: normal; font-weight: 600; overflow: hidden; white-space: nowrap; } .split i:empty { padding: 0; }
 .split i.c4 { color: #0b0b0b; } .split i.c0 { color: var(--ink); }
@@ -173,7 +176,6 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .k0 { background: var(--k0); } .k1 { background: var(--k1); } .k2 { background: var(--k2); } .kw { background: var(--kw); } .kx { background: transparent; box-shadow: inset 0 0 0 1px var(--base); }
 .split i.k0, .split i.k1, .split i.kw { color: #0b0b0b; } .split i.k2 { color: #fff; } .split i.kx { color: var(--ink2); }
 :root[data-theme="dark"] .split i.k0, :root[data-theme="dark"] .split i.k1, :root[data-theme="dark"] .split i.kw { color: #fff; } :root[data-theme="dark"] .split i.k2 { color: #0b0b0b; }
-.note { margin: 14px 0 0; color: var(--ink2); font-size: 12.5px; }
 .empty { padding: 40px 0; text-align: center; color: var(--ink2); }
 #tip { position: fixed; z-index: 9; display: none; min-width: 150px; max-width: 400px; padding: 10px 12px; border: 1px solid var(--base); border-radius: 10px; background: var(--raised); box-shadow: var(--shadow); font-size: 12.5px; pointer-events: none; }
 #tip .h { margin-bottom: 6px; color: var(--ink2); }
@@ -302,7 +304,7 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
   .kpi .spark { display: none; } .kpi .d { white-space: normal; } .kpi .v { font-size: 24px; }
   .card { padding: 16px; } .o1 { display: none; }
   .title { max-width: 160px; } .search input { width: 150px; } .ph { display: block !important; white-space: normal; max-width: 170px; } thead th { white-space: normal; } .mix.wide { width: 84px !important; } th, td { padding-right: 10px; } .axis, .plot { height: 190px; } .chart { grid-template-columns: 38px minmax(0, 1fr); }
-  .heat { grid-template-columns: 32px repeat(24, minmax(0, 1fr)); gap: 1px; } .rank .n { max-width: 120px; }
+  .heat { grid-template-columns: 32px repeat(24, minmax(0, 1fr)); gap: 1px; } .hstats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rank .n { max-width: 120px; }
   .price th, .price td { padding-right: 8px; font-size: 13px; } .price .lv { gap: 5px; }
 }
 

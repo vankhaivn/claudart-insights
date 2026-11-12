@@ -178,8 +178,21 @@ export function Heat({ F, by }: { F: Fact[]; by: "req" | "out" }) {
   const label = by === "req" ? t("requests") : t("out"), show = by === "req" ? f.int : f.cmp;
   const g = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
   let max = 0, peak = [0, 0];
-  for (const x of F) { const wd = (new Date(x.d + "T00:00:00Z").getUTCDay() + 6) % 7; g[wd][x.h] += by === "req" ? x.q : x.o; if (g[wd][x.h] > max) { max = g[wd][x.h]; peak = [wd, x.h]; } }
+  // Beside the grid: the weekend's and the night's share, and how many sessions had requests in the same hour.
+  let all = 0, weekend = 0, night = 0;
+  const slots = new Map<string, Set<number>>();
+  for (const x of F) {
+    const wd = (new Date(x.d + "T00:00:00Z").getUTCDay() + 6) % 7, v = by === "req" ? x.q : x.o;
+    g[wd][x.h] += v; all += v;
+    if (wd >= 5) weekend += v;
+    if (x.h >= 22 || x.h < 6) night += v;
+    if (g[wd][x.h] > max) { max = g[wd][x.h]; peak = [wd, x.h]; }
+    const k = x.d + " " + x.h;
+    if (!slots.has(k)) slots.set(k, new Set());
+    slots.get(k)!.add(x.s);
+  }
   if (!max) return <Empty />;
+  const same = [...slots.values()].map((s) => s.size).sort((a, b) => a - b), mid = same[Math.floor(same.length / 2)], most = same[same.length - 1];
   return (
     <>
       <div className="heat">
@@ -190,7 +203,12 @@ export function Heat({ F, by }: { F: Fact[]; by: "req" | "out" }) {
         <span />
         {Array.from({ length: 24 }, (_, h) => <span key={`l${h}`} className="cl">{h % 3 === 0 ? h : ""}</span>)}
       </div>
-      <p className="note">{t("peak")}: <b>{L.wd[peak[0]]}, {peak[1]}:00</b> · {show(max)} {label.toLowerCase()}</p>
+      <dl className="hstats">
+        <div><dt>{t("peak")}</dt><dd>{L.wd[peak[0]]}, {peak[1]}:00</dd><span>{show(max)} {label.toLowerCase()}</span></div>
+        <div><dt>{t("weekend")}</dt><dd>{f.pct(weekend / all)}</dd><span>{label.toLowerCase()}</span></div>
+        <div><dt>22:00–6:00</dt><dd>{f.pct(night / all)}</dd><span>{label.toLowerCase()}</span></div>
+        <div><dt>{t("sameHour")}</dt><dd>{f.int(mid)}</dd><span>{L.atMost(f.int(most))}</span></div>
+      </dl>
     </>
   );
 }
