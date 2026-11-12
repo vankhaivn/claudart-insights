@@ -335,6 +335,7 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 :root[data-theme="dark"] .plot .bands i { opacity: .62; }
 .plot .bands polyline { fill: none; stroke: var(--base); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 .plot .bands polyline.c0 { stroke: var(--s0); } .plot .bands polyline.c1 { stroke: var(--s1); } .plot .bands polyline.c2 { stroke: var(--s2); } .plot .bands polyline.c3 { stroke: var(--s3); } .plot .bands polyline.c4 { stroke: var(--s4); } .plot .bands polyline.c5 { stroke: var(--s5); } .plot .bands polyline.csub { stroke: var(--sub); }
+.plot .bands polyline.v0 { stroke: var(--v0); } .plot .bands polyline.v1 { stroke: var(--v1); } .plot .bands polyline.v2 { stroke: var(--v2); } .plot .bands polyline.v3 { stroke: var(--v3); } .plot .bands polyline.v4 { stroke: var(--v4); }
 .plot .bands polyline.k0 { stroke: var(--k0); } .plot .bands polyline.k1 { stroke: var(--k1); } .plot .bands polyline.k2 { stroke: var(--k2); } .plot .bands polyline.kw, .plot .bands polyline.kx { stroke: var(--base); }
 .plot.area .col:hover, .plot.area .col:focus-visible { background: none; }
 .plot.area .col:hover::before, .plot.area .col:focus-visible::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ink); opacity: .55; }

@@ -2,7 +2,7 @@
 // query. Filters are kept by name, so a link still means the same project after new data reorders the lists.
 // Defaults are left out of the URL.
 
-export const VIEWS = ["overview", "projects", "sessions", "models", "effort", "activity"] as const;
+export const VIEWS = ["overview", "projects", "sessions", "models", "subagents", "activity"] as const;
 // A built-in view, or the id of one a host package adds.
 export type View = string;
 export const RANGES = ["1", "7", "14", "30", "all"] as const;
@@ -15,9 +15,9 @@ export type UrlState = {
   from: string; to: string;
   project: string; model: string; effort: string; // "" for all
   metric: "out" | "cost" | "sess";
-  split: "model" | "kind"; // how a cost chart splits its columns
+  split: "model" | "project" | "effort" | "kind"; // how the overview splits its chart; kind is for cost only
   heat: "req" | "out"; // what the hour heatmap counts
-  chart: "bar" | "area"; // how per-day and per-hour charts draw their totals
+  chart: "bar" | "area" | "share"; // how per-day and per-hour charts draw their totals, or each slot as 100%
   sort: SortKey; dir: 1 | -1;
   q: string;
 };
@@ -37,9 +37,9 @@ export function parseUrl(pathname: string, search: string, extraViews: readonly 
     from: custom ? from : "", to: custom ? to : "",
     project: p.get("project") ?? "", model: p.get("model") ?? "", effort: p.get("effort") ?? "",
     metric: oneOf(["out", "cost", "sess"] as const, p.get("metric"), "out"),
-    split: oneOf(["model", "kind"] as const, p.get("split"), "model"),
+    split: oneOf(["model", "project", "effort", "kind"] as const, p.get("split"), "model"),
     heat: oneOf(["req", "out"] as const, p.get("heat"), "req"),
-    chart: oneOf(["bar", "area"] as const, p.get("chart"), "bar"),
+    chart: oneOf(["bar", "area", "share"] as const, p.get("chart"), "bar"),
     sort: oneOf(SORTS, p.get("sort"), DEFAULTS.sort),
     dir: p.get("dir") === "asc" ? 1 : -1,
     q: p.get("q") ?? "",

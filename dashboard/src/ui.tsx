@@ -3,6 +3,7 @@ import { useId, type CSSProperties, type ReactNode } from "react";
 import { usePopover } from "./controls/popover.tsx";
 import { useDash } from "./dash.ts";
 import type { Fact, Metric, Run, SessionRow } from "./model.ts";
+import type { UrlState } from "./state.ts";
 
 type Group = { n: string; c: string };
 export type TipRow = [cls: string, name: string, value: string];
@@ -52,8 +53,9 @@ function niceTop(max: number) {
 // Stacked columns per day, or per hour when list holds hours; with share, each column is the groups' split of 100%.
 // Totals draw as stacked areas when the chart toggle says so, each slot still a column to hover; a share keeps its
 // columns, since a day without use has no split to draw. fmt replaces the metric's format; extra adds tooltip rows for a column.
-export function Columns({ list, rows, groups, metric, share = false, fmt, extra }: { list: (string | number)[]; rows: number[][]; groups: Group[]; metric: Metric; share?: boolean; fmt?: (v: number) => string; extra?: (i: number) => TipRow[] }) {
+export function Columns({ list, rows, groups, metric, fmt, extra }: { list: (string | number)[]; rows: number[][]; groups: Group[]; metric: Metric; fmt?: (v: number) => string; extra?: (i: number) => TipRow[] }) {
   const { f, S } = useDash();
+  const share = S.chart === "share";
   const show = fmt ?? ((v: number) => f.fmt(metric, v));
   const max = Math.max(...rows.map((r) => r.reduce((a, b) => a + b, 0)), 0);
   if (!max) return <Empty />;
@@ -61,7 +63,7 @@ export function Columns({ list, rows, groups, metric, share = false, fmt, extra 
   const h = (i: number, k: number) => (share ? rows[i][k] / (rows[i].reduce((a, b) => a + b, 0) || 1) : rows[i][k]);
   for (let v = 0; v <= top + 1e-9; v += step) ticks.push(v);
   const hourly = typeof list[0] === "number", every = hourly ? 3 : Math.ceil(list.length / 15);
-  const area = S.chart === "area" && !share && list.length > 1, n = list.length;
+  const area = S.chart === "area" && list.length > 1, n = list.length;
   // Each group's band, from the groups below it to its own top, in percent of the plot; the first group is the lowest.
   const cum = list.map((_, i) => { let s = 0; return [0, ...groups.map((_, k) => (s += h(i, k)))]; });
   const px = (i: number) => ((i + 0.5) / n) * 100, py = (v: number) => 100 - (v / top) * 100;
@@ -113,23 +115,26 @@ export function useCostKinds(): Group[] {
 }
 
 // How a cost chart splits its columns: by model or by what the money paid for.
-export function SplitSeg() {
+// How the overview's chart splits its columns; cost can also split by what it paid for.
+export function SplitSeg({ split }: { split: UrlState["split"] }) {
   const { S, t, set } = useDash();
+  const label = { model: "splitModel", project: "splitProject", effort: "splitEffort", kind: "splitKind" } as const;
   return (
     <div className="seg" role="group">
-      {(["model", "kind"] as const).map((k) => <button key={k} aria-pressed={S.split === k} onClick={() => set({ split: k })}>{t(k === "model" ? "splitModel" : "splitKind")}</button>)}
+      {(["model", "project", "effort", ...(S.metric === "cost" ? ["kind"] as const : [])] as const).map((k) => <button key={k} aria-pressed={split === k} onClick={() => set({ split: k })}>{t(label[k])}</button>)}
     </div>
   );
 }
 
-// How per-day and per-hour charts draw their totals: stacked columns or stacked areas, for every chart at once.
+// How per-day and per-hour charts draw their totals: stacked columns, stacked areas or each slot as 100%, for every chart at once.
 export function ChartSeg() {
   const { S, t, set } = useDash();
-  const icon = { bar: <path d="M3 13V8M8 13V3M13 13V6" />, area: <path d="M2 13L5.5 7l3 3L14 4v9z" /> };
+  const icon = { bar: <path d="M3 13V8M8 13V3M13 13V6" />, area: <path d="M2 13L5.5 7l3 3L14 4v9z" />, share: <path d="M2.5 3h11v10h-11zM6.2 3v10M9.8 3v10M2.5 8.5h3.7M6.2 6.5h3.6M9.8 9.5h3.7" /> };
+  const label = { bar: "bars", area: "areas", share: "shares" } as const;
   return (
     <div className="seg chartseg" role="group">
-      {(["bar", "area"] as const).map((k) => (
-        <button key={k} aria-pressed={S.chart === k} aria-label={t(k === "bar" ? "bars" : "areas")} data-tip={tip(t(k === "bar" ? "bars" : "areas"), [])} onClick={() => set({ chart: k })}>
+      {(["bar", "area", "share"] as const).map((k) => (
+        <button key={k} aria-pressed={S.chart === k} aria-label={t(label[k])} data-tip={tip(t(label[k]), [])} onClick={() => set({ chart: k })}>
           <svg viewBox="0 0 16 16" aria-hidden="true">{icon[k]}</svg>
         </button>
       ))}

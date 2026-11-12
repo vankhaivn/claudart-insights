@@ -6,13 +6,13 @@ import { labelOf, type Extra } from "./extra.ts";
 import { makeFmt } from "./format.ts";
 import { T, type Key, type Lang } from "./i18n.tsx";
 import { buildModel, dayAdd, days, slice, type Filter, type Payload } from "./model.ts";
-import { parseUrl, toUrl, type UrlState, type View } from "./state.ts";
+import { parseUrl, toUrl, VIEWS, type UrlState, type View } from "./state.ts";
 import { Activity } from "./views/Activity.tsx";
-import { Effort } from "./views/Effort.tsx";
 import { Models } from "./views/Models.tsx";
 import { Overview } from "./views/Overview.tsx";
 import { Projects } from "./views/Projects.tsx";
 import { Sessions } from "./views/Sessions.tsx";
+import { Subagents } from "./views/Subagents.tsx";
 
 // Language and theme belong to this browser, not to a link; storage may be refused, and the page works without it.
 const store = {
@@ -20,13 +20,12 @@ const store = {
   set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* not remembered */ } },
 };
 
-const VIEWS: View[] = ["overview", "projects", "sessions", "models", "effort", "activity"];
 const ICON: Record<string, string> = {
   overview: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
   projects: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   sessions: '<path d="M4 6h16M4 12h16M4 18h10"/>',
   models: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
-  effort: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4.5-5.5"/>',
+  subagents: '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8.5 6H12v12H8.5M12 12h3.5"/>',
   activity: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
@@ -151,7 +150,7 @@ export function App({ extra }: { extra?: Extra }) {
   const list = days(filter.from, filter.to), F = slice(M, filter);
   const ev = extra?.views.find((v) => v.id === view);
   const nav = (k: View) => <button key={k} onClick={() => set({ view: k })} aria-current={view === k ? "page" : undefined}><Icon name={k} />{t(k as Key)}</button>;
-  const body = ({ overview: () => <Overview F={F} list={list} />, projects: () => <Projects F={slice(M, { ...filter, project: -1 })} list={list} />, sessions: () => <Sessions F={F} />, models: () => <Models F={F} />, effort: () => <Effort F={F} list={list} />, activity: () => <Activity F={F} list={list} /> } as Record<string, () => ReactNode>)[view]?.();
+  const body = ({ overview: () => <Overview F={F} list={list} />, projects: () => <Projects F={slice(M, { ...filter, project: -1 })} />, sessions: () => <Sessions F={F} />, models: () => <Models F={F} />, subagents: () => <Subagents F={F} />, activity: () => <Activity F={F} list={list} /> } as Record<string, () => ReactNode>)[view]?.();
 
   return (
     <DashContext.Provider value={dash}>

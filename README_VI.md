@@ -39,7 +39,7 @@ Mỗi repository một ô, lớn nhỏ theo chi phí.
 
 ### Model và subagent
 
-Phần việc chia giữa các model và giữa các agent mà phiên giao việc cho, cùng cách mỗi model làm việc: output và thinking mỗi request, số request mỗi lượt owner, số tool call và phần bị lỗi, tốc độ output.
+Cách mỗi model làm việc (output và thinking mỗi request, số request mỗi lượt owner, số tool call và phần bị lỗi, tốc độ output) và mỗi mức effort tốn bao nhiêu; rồi các agent mà phiên giao việc cho làm bao nhiêu phần việc, trên model nào.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/models-dark.png">
