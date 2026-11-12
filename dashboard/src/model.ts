@@ -17,10 +17,12 @@ export type Session = {
 };
 // rb is null unless a request of the fact rebuilt the cache; else [count, rewritten tokens, extra cost] per cause in
 // CAUSES order, then the idle gaps from 5 to 15 minutes, from 15 to 60 minutes and over an hour (summed over the fact's requests).
-// k is null unless part of the fact's cost was priced; else that cost as [reading the context, writing the cache, output].
-export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number; rb: number[] | null; k: number[] | null };
+// k is null unless part of the fact's cost was priced; else that cost as [reading the context, writing the cache, output, web search].
+// sv is what the cache saved against sending the same tokens as input; tc and te count tool calls and failed ones;
+// ot counts the owner turns whose first request is in the fact.
+export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number; rb: number[] | null; k: number[] | null; sv: number; tc: number; te: number; ot: number };
 export type Subagent = { s: number; type: number; m: number; parent: number; o: number };
-type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number, number[] | null, number[] | null];
+type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number, number[] | null, number[] | null, number, number, number, number];
 export type Payload = {
   today: string; scanned: string; models: string[]; projects: string[]; types: string[]; efforts: string[]; transcripts: number;
   sessions: Session[]; facts: RawFact[]; subagents: Subagent[]; tools: Record<string, [number, number]>[];
@@ -36,7 +38,7 @@ export const dayAdd = (day: string, n: number) => new Date(Date.parse(day + "T00
 export const days = (from: string, to: string) => { const out: string[] = []; for (let d = from; d <= to; d = dayAdd(d, 1)) out.push(d); return out; };
 
 export function buildModel(data: Payload) {
-  const facts: Fact[] = data.facts.map(([s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb, k]) => ({ s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb, k }));
+  const facts: Fact[] = data.facts.map(([s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb, k, sv, tc, te, ot]) => ({ s, d, h, m, sub, e, q, i, o, cr, cw, th, c, rb, k, sv, tc, te, ot }));
   const sumOut = (p: number) => facts.reduce((n, f) => n + (data.sessions[f.s].p === p ? f.o : 0), 0);
   const projectRank = data.projects.map((_, i) => i).sort((a, b) => sumOut(b) - sumOut(a));
   return {
@@ -97,8 +99,8 @@ export function byDayKinds(F: Fact[], list: (string | number)[]) {
 
 export type Totals = ReturnType<typeof totals>;
 export function totals(M: Model, F: Fact[]) {
-  const a = { o: 0, c: 0, i: 0, cr: 0, cw: 0, q: 0, th: 0, n: 0, hit: 0, ctx: 0, tps: 0, k: [0, 0, 0, 0], sess: new Set<number>() };
-  for (const f of F) { a.o += f.o; a.c += f.c; a.i += f.i; a.cr += f.cr; a.cw += f.cw; a.q += f.q; a.th += f.th; a.sess.add(f.s); f.k?.forEach((x, j) => { a.k[j] += x; }); }
+  const a = { o: 0, c: 0, i: 0, cr: 0, cw: 0, q: 0, th: 0, sv: 0, n: 0, hit: 0, ctx: 0, tps: 0, k: [0, 0, 0, 0], sess: new Set<number>() };
+  for (const f of F) { a.o += f.o; a.c += f.c; a.i += f.i; a.cr += f.cr; a.cw += f.cw; a.q += f.q; a.th += f.th; a.sv += f.sv; a.sess.add(f.s); f.k?.forEach((x, j) => { a.k[j] += x; }); }
   const ss = [...a.sess].map((s) => M.sessions[s]);
   a.n = a.sess.size; a.hit = a.cr / (a.cr + a.cw + a.i || 1); a.ctx = context(a);
   // Speed counts only sessions whose host record gives API time; a running session has none yet.
@@ -179,6 +181,30 @@ export function vsHigh(F: Fact[], m: number, e: number, high: number): { r: numb
   if (n < 3) return { r: null, n };
   const ratios = pairs.map((u) => u.o[0] / u.q[0] / (u.o[1] / u.q[1])).sort((a, b) => a - b), mid = ratios.length >> 1;
   return { r: ratios.length % 2 ? ratios[mid] : (ratios[mid - 1] + ratios[mid]) / 2, n };
+}
+
+// How each model works, from the facts in the window: output per request, the thinking share of output, main-thread
+// requests per owner turn, tool calls per request and the failed share of them, and output speed. A figure needs a base
+// of at least BASE requests, turns or calls, else it is null. Speed counts sessions that ran only this model, subagents
+// included, since the host gives API time per session; it needs at least 3 such sessions.
+export const BASE = 20;
+export type Behavior = { m: number; q: number; turns: number; calls: number; timed: number; out: number | null; think: number | null; steps: number | null; tools: number | null; fail: number | null; tps: number | null };
+export function behavior(M: Model, F: Fact[]): Behavior[] {
+  const only = new Map<number, number>(); // session → its one model, or -1 when it ran several
+  for (const f of M.facts) { const m = only.get(f.s); only.set(f.s, m === undefined || m === f.m ? f.m : -1); }
+  const sessions = new Set(F.map((f) => f.s));
+  return M.models.map((_, m) => {
+    const x = F.filter((f) => f.m === m), sum = (k: (f: Fact) => number) => x.reduce((n, f) => n + k(f), 0);
+    const q = sum((f) => f.q), o = sum((f) => f.o), turns = sum((f) => f.ot), calls = sum((f) => f.tc);
+    const timed = [...sessions].filter((s) => only.get(s) === m).map((s) => M.sessions[s]).filter((s) => s.api > 0);
+    const api = timed.reduce((n, s) => n + s.api, 0);
+    return {
+      m, q, turns, calls, timed: timed.length,
+      out: q >= BASE ? o / q : null, think: q >= BASE && o ? sum((f) => f.th) / o : null,
+      steps: turns >= BASE ? sum((f) => (f.sub ? 0 : f.q)) / turns : null, tools: q >= BASE ? calls / q : null,
+      fail: calls >= BASE ? sum((f) => f.te) / calls : null, tps: timed.length >= 3 && api ? timed.reduce((n, s) => n + s.out, 0) / api : null,
+    };
+  }).filter((b) => b.q);
 }
 
 export const mainLevel = (runs: Run[]) => { const by = new Map<number, number>(); runs.forEach(([e, q]) => by.set(e, (by.get(e) || 0) + q)); return [...by].sort((a, b) => b[1] - a[1])[0][0]; };

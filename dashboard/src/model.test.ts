@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { byDayKinds, context, costParts, rebuilds, skillUses, vsHigh, type Fact, type Model } from "./model.ts";
+import { behavior, byDayKinds, context, costParts, rebuilds, skillUses, vsHigh, type Fact, type Model } from "./model.ts";
 import { parseUrl } from "./state.ts";
 
-const fact = (rb: number[] | null): Fact => ({ s: 0, d: "2026-11-01", h: 0, m: 0, sub: 0, e: 0, q: 1, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb, k: null });
+const fact = (rb: number[] | null): Fact => ({ s: 0, d: "2026-11-01", h: 0, m: 0, sub: 0, e: 0, q: 1, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb, k: null, sv: 0, tc: 0, te: 0, ot: 0 });
 
 test("rebuilds sums the facts' vectors per cause and splits the idle ones by gap", () => {
   // start, compaction, idle, other as [count, tokens, extra], then the three idle gap counts.
@@ -57,4 +57,16 @@ test("effort against high compares the same sessions, as the median of their rat
   assert.deepEqual(vsHigh(F, 0, 1, 2), { r: 0.6, n: 3 });
   assert.deepEqual(vsHigh(F.filter((x) => x.s !== 2), 0, 1, 2), { r: null, n: 2 });
   assert.deepEqual(vsHigh(F, 1, 1, 2), { r: null, n: 0 });
+});
+
+test("how each model works needs a base for each figure, and speed only sessions that ran one model", () => {
+  const f = (s: number, m: number, sub: number, q: number, o: number, x: Partial<Fact> = {}): Fact => ({ ...fact(null), s, m, sub, q, o, ...x });
+  const session = (api: number, out: number) => ({ api, out });
+  // Model 0 runs sessions 0-2 alone; session 3 mixes it with model 1, so only model 0's sessions 0-2 give a speed.
+  const F = [f(0, 0, 0, 10, 1000, { th: 500, ot: 10, tc: 20, te: 2 }), f(0, 0, 1, 10, 500, { tc: 10 }), f(1, 0, 0, 5, 500, { ot: 5 }), f(2, 0, 0, 5, 500, { ot: 5 }),
+    f(3, 0, 0, 5, 100), f(3, 1, 1, 30, 300, { tc: 3 })];
+  const M = { models: ["a", "b"], facts: F, sessions: [session(10, 1500), session(5, 500), session(5, 500), session(20, 400)] } as unknown as Model;
+  const [a, b] = behavior(M, F);
+  assert.deepEqual(a, { m: 0, q: 35, turns: 20, calls: 30, timed: 3, out: 2600 / 35, think: 500 / 2600, steps: 25 / 20, tools: 30 / 35, fail: 2 / 30, tps: 2500 / 20 });
+  assert.deepEqual(b, { m: 1, q: 30, turns: 0, calls: 3, timed: 0, out: 10, think: 0, steps: null, tools: 0.1, fail: null, tps: null });
 });

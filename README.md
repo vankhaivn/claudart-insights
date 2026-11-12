@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/overview-dark.png">
-  <img src="docs/assets/overview-light.png" alt="The Overview: output tokens, cost, sessions and cache reads for the last 30 days, with daily charts">
+  <img src="docs/assets/overview-light.png" alt="The Overview: output tokens, cost, sessions, cache reads, what the cache saved and output speed for the last 30 days, with daily charts">
 </picture>
 
 <p align="center"><sub>Every figure on this page is made-up demo data, served by <code>make demo</code>.</sub></p>
@@ -39,7 +39,7 @@ One tile per repository, sized by cost.
 
 ### Models and subagents
 
-How the work splits between models, and between the agents a session delegates to.
+How the work splits between models and between the agents a session delegates to, and how each model works: output and thinking per request, requests per owner turn, tool calls and the share that failed, and output speed.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/models-dark.png">
@@ -117,6 +117,8 @@ A session's project is the nearest folder at or above its working directory that
 Claude Code records a cost per session; Insights uses that figure and spreads it over the session's requests by their tokens priced on their own day from [prices.md](prices.md) (USD per million tokens, one row per model and start date). A session without a cost record is estimated from the table and marked as such. `prices` and the scan report show where Claude Code's figures and the table disagree; add a row from the day a price changes and never edit an old row.
 
 Each cost is split into what it paid for: reading the context, cache writes, output and web search. Claude Code also calls models in the background, Haiku for the WebSearch tool among them, without writing those calls to the transcript; their cost is split by the tokens Claude Code recorded for that model. Web search is what a model that searched the web cost beyond its tokens priced from the table. A model without a price row stays as "Not split".
+
+What the cache saved is each request's cache reads priced as input instead, less what its cache writes cost beyond input: the bill without the prompt cache, against the bill with it.
 
 Cost is list price. On a subscription it is quota spent, not money.
 

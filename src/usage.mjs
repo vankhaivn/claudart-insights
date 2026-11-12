@@ -1,7 +1,7 @@
 // Usage rows shared by the `usage` command and the dashboard, so their totals cannot differ.
 import { familyOf } from "./providers/claude.mjs";
 import { zoner } from "./zone.mjs";
-import { costKinds, priceAt, priceReport, readPrices, requestCost, usageKinds } from "./prices.mjs";
+import { cacheSaving, costKinds, priceAt, priceReport, readPrices, requestCost, usageKinds } from "./prices.mjs";
 import { CAUSES } from "./rebuilds.mjs";
 
 const FAMILY_NAMES = { opus: "Opus", sonnet: "Sonnet", haiku: "Haiku", fable: "Fable" };
@@ -58,7 +58,7 @@ export function loadRows(db, config, now = new Date()) {
   const minute = new Intl.DateTimeFormat("en-GB", { timeZone: config.timeZone, minute: "2-digit" });
   const sessionRows = db.prepare(`SELECT s.*, (SELECT MIN(ts) FROM requests r WHERE r.session_id = s.id) first_req
     FROM sessions s ORDER BY coalesce(s.first_ts, first_req)`).all().filter((s) => s.first_ts || s.first_req);
-  const requests = db.prepare("SELECT session_id, agent_id, ts, day, hour, model, family, effort, is_sub, input, output, thinking, cache_read, cache_write, cache_write_1h, rebuild, rebuild_gap, rebuild_extra FROM requests").all();
+  const requests = db.prepare("SELECT file_id, line, session_id, agent_id, ts, day, hour, model, family, effort, is_sub, input, output, thinking, cache_read, cache_write, cache_write_1h, rebuild, rebuild_gap, rebuild_extra FROM requests").all();
   const prices = readPrices(config).rows;
   // Models whose host cost misses the price table, per session.
   const off = new Map();
@@ -69,6 +69,26 @@ export function loadRows(db, config, now = new Date()) {
   const skillUses = db.prepare("SELECT session_id, name, via, source, is_error, ts FROM skills").all();
   const subs = db.prepare(`SELECT f.agent_id, f.session_id, a.type, a.tool_use_id, (SELECT model FROM tool_calls t WHERE t.id = a.tool_use_id) parent_model
     FROM files f LEFT JOIN subagents a ON a.agent_id = f.agent_id WHERE f.kind = 'sub'`).all();
+
+  // A tool call belongs to the request whose message holds it: the last request of its transcript at or before its line.
+  // An owner message opens its turn on the next request of its transcript.
+  const byFile = new Map();
+  for (const r of requests) { r.tc = 0; r.te = 0; r.ot = 0; (byFile.get(r.file_id) ?? byFile.set(r.file_id, []).get(r.file_id)).push(r); }
+  for (const list of byFile.values()) list.sort((a, b) => a.line - b.line);
+  const before = (file, line) => {
+    const list = byFile.get(file) ?? [];
+    let lo = 0, hi = list.length - 1, k = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (list[mid].line <= line) { k = mid; lo = mid + 1; } else hi = mid - 1; }
+    return k;
+  };
+  for (const c of db.prepare("SELECT file_id, line, coalesce(is_error, 0) e FROM tool_calls").all()) {
+    const r = byFile.get(c.file_id)?.[before(c.file_id, c.line)];
+    if (r) { r.tc++; r.te += c.e; }
+  }
+  for (const o of db.prepare("SELECT file_id, line FROM owner_messages").all()) {
+    const r = byFile.get(o.file_id)?.[before(o.file_id, o.line) + 1];
+    if (r) r.ot++;
+  }
 
   const bySession = new Map();
   for (const r of requests) (bySession.get(r.session_id) ?? bySession.set(r.session_id, []).get(r.session_id)).push(r);
@@ -146,7 +166,7 @@ export function loadRows(db, config, now = new Date()) {
     }
     const put = (d, h, family, sub, effort, add, rb = null, kinds = null) => {
       const key = `${i}|${d}|${h}|${family}|${sub}|${effort}`;
-      const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb: null, k: null }).get(key);
+      const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, sv: 0, tc: 0, te: 0, ot: 0, rb: null, k: null }).get(key);
       for (const [k, v] of Object.entries(add)) f[k] += v;
       if (kinds) {
         f.k ??= [0, 0, 0, 0];
@@ -157,7 +177,10 @@ export function loadRows(db, config, now = new Date()) {
         rb.forEach((x, k) => { f.rb[k] += x; });
       }
     };
-    for (const r of reqs) put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0 }, rebuildVector(r), kindsOf.get(r));
+    for (const r of reqs) {
+      const p = priceAt(prices, r.model, r.day);
+      put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0, sv: p ? cacheSaving(p.p, r) : 0, tc: r.tc, te: r.te, ot: r.ot }, rebuildVector(r), kindsOf.get(r));
+    }
     // A model the host charged with no request in the transcript lands on the session's first hour.
     for (const [key, value, kinds] of unplaced) put(day, hour, key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key), 0, sessions[i].effort, { c: value }, null, kinds);
   }

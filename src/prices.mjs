@@ -54,6 +54,13 @@ export function costKinds(p, r) {
   return [(r.input * p[0] + r.cache_read * p[2]) / 1e6, (w5 * p[3] + w1 * p[4]) / 1e6, (r.output * p[1]) / 1e6];
 }
 
+// What the cache saved one request: its cache reads priced as input instead, less what its cache writes cost beyond input.
+export function cacheSaving(p, r) {
+  const w1 = r.cache_write_1h ?? r.cache_write;
+  const w5 = r.cache_write - w1;
+  return (r.cache_read * (p[0] - p[2]) - w5 * (p[3] - p[0]) - w1 * (p[4] - p[0])) / 1e6;
+}
+
 // A host cost record's tokens for one model, priced and split as costKinds splits a request;
 // writes the host did not split into 5m and 1h are priced as 1h writes.
 export function usageKinds(p, u) {

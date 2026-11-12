@@ -8,7 +8,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/overview-dark.png">
-  <img src="docs/assets/overview-light.png" alt="Màn hình Tổng quan: output token, chi phí, số phiên và tỉ lệ đọc từ cache trong 30 ngày, kèm biểu đồ theo ngày">
+  <img src="docs/assets/overview-light.png" alt="Màn hình Tổng quan: output token, chi phí, số phiên, tỉ lệ đọc từ cache, tiền cache tiết kiệm và tốc độ output trong 30 ngày, kèm biểu đồ theo ngày">
 </picture>
 
 <p align="center"><sub>Mọi con số trên trang này là dữ liệu demo bịa ra, do <code>make demo</code> phục vụ.</sub></p>
@@ -39,7 +39,7 @@ Mỗi repository một ô, lớn nhỏ theo chi phí.
 
 ### Model và subagent
 
-Phần việc chia giữa các model, và giữa các agent mà phiên giao việc cho.
+Phần việc chia giữa các model và giữa các agent mà phiên giao việc cho, cùng cách mỗi model làm việc: output và thinking mỗi request, số request mỗi lượt owner, số tool call và phần bị lỗi, tốc độ output.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/models-dark.png">
@@ -117,6 +117,8 @@ Dự án của một phiên là thư mục gần nhất, từ thư mục làm vi
 Claude Code ghi chi phí cho mỗi phiên; Insights dùng con số đó và chia cho các request của phiên theo token, tính giá của chính ngày hôm đó trong [prices.md](prices.md) (USD cho một triệu token, mỗi dòng ứng với một model và ngày bắt đầu hiệu lực). Phiên không có bản ghi chi phí được ước tính từ bảng giá và được đánh dấu. `prices` và báo cáo của lần quét cho biết chỗ số của Claude Code lệch bảng giá; hãy thêm dòng mới từ ngày giá đổi, đừng sửa dòng cũ.
 
 Mỗi khoản chi phí được tách theo thứ nó trả cho: đọc context, ghi cache, output và web search. Claude Code còn gọi model ngầm, trong đó có Haiku cho công cụ WebSearch, mà không ghi các lần gọi đó vào transcript; chi phí của chúng được tách theo số token Claude Code đã ghi cho model đó. Web search là phần một model có tìm kiếm web tốn thêm ngoài số token của nó tính theo bảng giá. Model chưa có dòng giá thì giữ nguyên là "Không tách được".
+
+Tiền cache tiết kiệm là số token mỗi request đọc từ cache tính lại theo giá input, trừ đi phần ghi cache trả thêm so với giá input: hoá đơn khi không có prompt cache so với hoá đơn khi có.
 
 Chi phí tính theo giá niêm yết. Với gói thuê bao, đó là hạn mức đã dùng, không phải tiền.
 
