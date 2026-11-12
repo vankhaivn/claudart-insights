@@ -87,7 +87,7 @@ export function Columns({ list, rows, groups, metric, fmt, extra }: { list: (str
             const head = (hourly ? d + ":00" : f.dshort(d as string)) + " · " + show(sum);
             return (
               <div key={d} className="col" tabIndex={0} data-tip={tip(head, [...groups.map((g, k): TipRow => [g.c, g.n, (share ? f.pct(h(i, k)) + " · " : "") + show(rows[i][k])]).filter((_, k) => rows[i][k]), ...(extra?.(i) ?? [])])}>
-                {area ? null : <div className="bars">{groups.map((g, k) => (rows[i][k] ? <i key={k} className={g.c} style={{ height: `${(h(i, k) / top) * 100}%` }} /> : null)).reverse()}</div>}
+                {area ? groups.map((g, k) => (rows[i][k] ? <b key={k} className={`dot ${g.c}`} style={{ bottom: `${(cum[i][k + 1] / top) * 100}%` }} /> : null)) : <div className="bars">{groups.map((g, k) => (rows[i][k] ? <i key={k} className={g.c} style={{ height: `${(h(i, k) / top) * 100}%` }} /> : null)).reverse()}</div>}
                 {i % every === 0 || month ? <span className="x">{dn}{month}</span> : null}
               </div>
             );

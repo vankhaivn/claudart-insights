@@ -339,6 +339,8 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 .plot .bands polyline.k0 { stroke: var(--k0); } .plot .bands polyline.k1 { stroke: var(--k1); } .plot .bands polyline.k2 { stroke: var(--k2); } .plot .bands polyline.kw, .plot .bands polyline.kx { stroke: var(--base); }
 .plot.area .col:hover, .plot.area .col:focus-visible { background: none; }
 .plot.area .col:hover::before, .plot.area .col:focus-visible::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ink); opacity: .55; }
+.plot.area .col .dot { display: none; position: absolute; left: 50%; z-index: 1; width: 8px; height: 8px; margin: 0 0 -4px -4px; border-radius: 50%; box-shadow: 0 0 0 2px var(--surface); pointer-events: none; }
+.plot.area .col:hover .dot, .plot.area .col:focus-visible .dot { display: block; }
 .spark polygon { stroke: none; }
 .spark .g0 { stop-color: var(--ink2); stop-opacity: .2; } .spark .g1 { stop-color: var(--ink2); stop-opacity: 0; }
 
