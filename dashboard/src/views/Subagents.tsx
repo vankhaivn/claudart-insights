@@ -1,5 +1,5 @@
 import { useDash } from "../dash.ts";
-import { totals, type Fact } from "../model.ts";
+import { mainLevel, totals, type Fact } from "../model.ts";
 import { Empty, Legend, Mix, tip, type TipRow } from "../ui.tsx";
 
 // The subagent story: how much of each model's output subagents wrote, which models each parent model's subagents
@@ -23,6 +23,16 @@ export function Subagents({ F }: { F: Fact[] }) {
   const models = M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
   // Requests by effort level, per model the subagents ran on.
   const SF = F.filter((x) => x.sub), subLv = M.levels.filter((e) => SF.some((x) => x.e === e));
+  // How often a subagent ran on another model than the one that spawned it, and what subagents cost.
+  const moved = subs.filter((a) => a.m !== a.parent).length, subCost = SF.reduce((n, x) => n + x.c, 0);
+  // Subagent requests against the level the session's main thread ran most; levels past max have no order.
+  let lo = 0, hi = 0, same = 0;
+  for (const x of SF) {
+    const r = M.sessions[x.s].runs, p = r.length ? mainLevel(r) : -1;
+    if (p < 0 || p > 4 || x.e > 4) continue;
+    if (x.e < p) lo += x.q; else if (x.e > p) hi += x.q; else same += x.q;
+  }
+  const ranked = lo + hi + same, pct = (v: number) => (v ? f.pct(v / ranked) : null);
   const subEff = M.models.map((n, m) => ({ n, m, c: subLv.map((e) => SF.reduce((a, x) => a + (x.m === m && x.e === e ? x.q : 0), 0)) })).filter((r) => r.c.some(Boolean));
   return (
     <div className="stack">
@@ -44,6 +54,7 @@ export function Subagents({ F }: { F: Fact[] }) {
         </section>
         <section className="card">
           <header><h2>{t("routedTitle")}</h2><span className="hint">{f.int(subs.length)} {t("subs").toLowerCase()}</span></header>
+          {subs.length ? <p className="lead">{L.routedLead(f.pct(moved / subs.length), f.pct(subCost / (all.c || 1)), f.usd(subCost))}</p> : null}
           <Legend groups={models} metric="sess" />
           {routes.length ? <div className="rows">{routes.map((r) => {
             const sum = r.row.reduce((a, b) => a + b, 0);
@@ -66,6 +77,7 @@ export function Subagents({ F }: { F: Fact[] }) {
         </section>
         <section className="card">
           <header><h2>{t("subEffort")}</h2><span className="hint">{t("requests").toLowerCase()}</span></header>
+          {ranked ? <p className="lead">{L.subEffLead(pct(lo), pct(hi))}</p> : null}
           {subEff.length ? <>
             <Legend groups={subLv.map((e) => ({ n: M.efforts[e], c: "v" + e }))} metric="sess" />
             <div className="rows">{subEff.map((r) => {
