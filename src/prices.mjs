@@ -45,10 +45,13 @@ export function priceAt(rows, model, day) {
 
 // One request priced: a cache write without the 5m/1h split (older hosts) is priced as a 1h write,
 // which is what the host's own figures for those records match on this machine.
-export function requestCost(p, r) {
+export const requestCost = (p, r) => costKinds(p, r).reduce((a, b) => a + b, 0);
+
+// The same price in three parts: reading the context (input and cache reads), writing the cache, output.
+export function costKinds(p, r) {
   const w1 = r.cache_write_1h ?? r.cache_write;
   const w5 = r.cache_write - w1;
-  return (r.input * p[0] + r.output * p[1] + r.cache_read * p[2] + w5 * p[3] + w1 * p[4]) / 1e6;
+  return [(r.input * p[0] + r.cache_read * p[2]) / 1e6, (w5 * p[3] + w1 * p[4]) / 1e6, (r.output * p[1]) / 1e6];
 }
 
 // A host cost record's tokens for one model, priced; without the split, the range from all-5m to all-1h writes.

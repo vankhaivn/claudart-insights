@@ -1,7 +1,7 @@
 import { useDash } from "../dash.ts";
-import { totals, type Fact } from "../model.ts";
+import { costParts, totals, type Fact } from "../model.ts";
 import { Disclosure } from "../controls/Disclosure.tsx";
-import { Empty, Legend, Mix, Swatch, tip, type TipRow } from "../ui.tsx";
+import { Empty, Legend, Mix, Swatch, tip, useCostKinds, type TipRow } from "../ui.tsx";
 
 // The model story, top to bottom: which model the money goes to against the work it does, how much of each
 // model's work subagents did, which models the subagents ran on, and the subagent types.
@@ -21,24 +21,35 @@ export function Models({ F }: { F: Fact[] }) {
   }).filter((r) => r.count).sort((a, b) => b.count - a.count);
   const subOut = per.reduce((n, r) => n + r.sub, 0);
   const models = M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
+  // Each model's cost split by what it paid for; the part the table cannot split is named only when some model has it.
+  const kinds = useCostKinds(), parts = (r: (typeof per)[number]) => costParts(r.tt.c, r.tt.k);
+  const shown = kinds.filter((_, j) => j < 3 || per.some((r) => parts(r)[3]));
 
   if (!per.length) return <section className="card"><Empty /></section>;
-  // A share as a bar out of 100%, with the figure and its share beside it.
-  const share = (c: string, part: number, whole: number, shown: string) => (
-    <div className="sharebar"><span className="t"><i className={c} style={{ width: `${(part / (whole || 1)) * 100}%` }} /></span><b>{f.pct(part / (whole || 1))}</b><small>{shown}</small></div>
-  );
+  // The model's whole cost as one bar, its parts labelled with their share when there is room; amounts in the tooltip.
+  const kindBar = (name: string, c: number, v: number[]) => {
+    const sum = v.reduce((a, b) => a + b, 0);
+    if (!sum) return "—";
+    const about = tip(`${name} · ${f.usd(c)}`, v.map((x, j): TipRow => [kinds[j].c, kinds[j].n, `${f.usd(x)} · ${f.pct(x / sum)}`]).filter((_, j) => v[j]));
+    return (
+      <span className="split kinds" tabIndex={0} data-tip={about}>
+        {v.map((x, j) => (x ? <i key={j} className={kinds[j].c} style={{ width: `${(x / sum) * 100}%` }}>{x / sum >= 0.12 ? f.pct(x / sum) : ""}</i> : null))}
+      </span>
+    );
+  };
   return (
     <div className="stack">
       <section className="card">
-        <header><h2>{t("whereMoney")}</h2></header>
+        <header><h2>{t("whereMoney")}</h2><Legend groups={shown} metric="sess" style={{ margin: 0 }} /></header>
         <div className="scroll"><table className="money">
-          <thead><tr><th>{t("model")}</th><th>{t("cost")}</th><th>{t("out")}</th><th className="num o1">{t("perMOut")}</th></tr></thead>
+          <thead><tr><th>{t("model")}</th><th className="num">{t("cost")}</th><th className="num">{t("share")}</th><th className="num o1">{t("ctxPerReq")}</th><th className="wide">{t("costKinds")}</th></tr></thead>
           <tbody>{per.map((r) => (
             <tr key={r.m}>
               <th className="name"><Swatch c={r.c} />{r.n}</th>
-              <td>{share(r.c, r.tt.c, all.c, f.usd(r.tt.c))}</td>
-              <td>{share(r.c, r.tt.o, all.o, f.cmp(r.tt.o))}</td>
-              <td className="num o1">{r.tt.o ? f.usd((r.tt.c / r.tt.o) * 1e6) : "—"}</td>
+              <td className="num"><b>{f.usd(r.tt.c)}</b></td>
+              <td className="num">{f.pct(r.tt.c / (all.c || 1))}</td>
+              <td className="num o1">{r.tt.q ? f.cmp(r.tt.ctx) : "—"}</td>
+              <td className="wide">{kindBar(r.n, r.tt.c, parts(r))}</td>
             </tr>
           ))}</tbody>
         </table></div>

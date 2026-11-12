@@ -1,7 +1,7 @@
 // Usage rows shared by the `usage` command and the dashboard, so their totals cannot differ.
 import { familyOf } from "./providers/claude.mjs";
 import { zoner } from "./zone.mjs";
-import { priceAt, priceReport, readPrices, requestCost } from "./prices.mjs";
+import { costKinds, priceAt, priceReport, readPrices, requestCost } from "./prices.mjs";
 import { CAUSES } from "./rebuilds.mjs";
 
 const FAMILY_NAMES = { opus: "Opus", sonnet: "Sonnet", haiku: "Haiku", fable: "Fable" };
@@ -115,6 +115,7 @@ export function loadRows(db, config, now = new Date()) {
     // Spread each model's host cost over that model's requests by their tokens priced on their day,
     // so a later price never moves cost between earlier days; a model without a price row is spread by output tokens.
     const costOf = new Map();
+    const kindsOf = new Map();
     const unplaced = [];
     for (const [key, value] of Object.entries(s.model_cost ? JSON.parse(s.model_cost) : {})) {
       if (!value) continue;
@@ -125,18 +126,30 @@ export function loadRows(db, config, now = new Date()) {
       if (!priced) for (const r of targets) if (!sessions[i].unpriced.includes(r.model)) sessions[i].unpriced.push(r.model);
       const weight = targets.map((r, k) => (priced ? requestCost(rows[k].p, r) : r.output));
       const total = weight.reduce((a, b) => a + b, 0);
-      targets.forEach((r, k) => costOf.set(r, (costOf.get(r) ?? 0) + value * (total ? weight[k] / total : 1 / targets.length)));
+      targets.forEach((r, k) => {
+        const share = value * (total ? weight[k] / total : 1 / targets.length);
+        costOf.set(r, (costOf.get(r) ?? 0) + share);
+        // The share split as the price table splits the request: reading the context, writing the cache, output.
+        if (priced && weight[k]) {
+          const kinds = costKinds(rows[k].p, r), had = kindsOf.get(r) ?? [0, 0, 0];
+          kindsOf.set(r, had.map((x, j) => x + (share * kinds[j]) / weight[k]));
+        }
+      });
     }
-    const put = (d, h, family, sub, effort, add, rb = null) => {
+    const put = (d, h, family, sub, effort, add, rb = null, kinds = null) => {
       const key = `${i}|${d}|${h}|${family}|${sub}|${effort}`;
-      const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb: null }).get(key);
+      const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb: null, k: null }).get(key);
       for (const [k, v] of Object.entries(add)) f[k] += v;
+      if (kinds) {
+        f.k ??= [0, 0, 0];
+        kinds.forEach((x, j) => { f.k[j] += x; });
+      }
       if (rb) {
         f.rb ??= new Array(rb.length).fill(0);
         rb.forEach((x, k) => { f.rb[k] += x; });
       }
     };
-    for (const r of reqs) put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0 }, rebuildVector(r));
+    for (const r of reqs) put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0 }, rebuildVector(r), kindsOf.get(r));
     // A model the host charged with no request in the transcript lands on the session's first hour.
     for (const [key, value] of unplaced) put(day, hour, key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key), 0, sessions[i].effort, { c: value });
   }

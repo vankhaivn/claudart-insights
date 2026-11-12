@@ -54,7 +54,14 @@ test("costs are spread by the price in force on each request's day; a model with
   assert.deepEqual(all.unpriced, ["claude-fable-5-2"]);
   // Notes belong to the window: the first two days have no Fable request; sessions off the table carry their model.
   assert.deepEqual(json(home.run("usage", "--since", "2026-11-01", "--until", "2026-11-02", "--json")).unpriced, []);
-  const rows = buildUsageRows(loadConfig(home.config)).sessions;
+  // The cost split as the table prices it: only output has a price here, so all of a priced cost is output;
+  // Fable has no row, so its cost stays unsplit.
+  const data = buildUsageRows(loadConfig(home.config)), fable = data.models.indexOf("Fable");
+  for (const f of data.facts) {
+    if (f[3] === fable) assert.equal(f[14], null);
+    else if (f[12]) assert.deepEqual(f[14].map((x) => Math.round(x * 1e6) / 1e6), [0, 0, Math.round(f[12] * 1e6) / 1e6]);
+  }
+  const rows = data.sessions;
   assert.deepEqual(rows.filter((s) => s.priceOff.length).map((s) => [s.id, s.priceOff]), [[ids.split.slice(0, 8), ["claude-opus-5-5[1m]"]], [ids.miss.slice(0, 8), ["claude-opus-5-5"]]]);
   assert.deepEqual(all.total.costGaps.map((g) => [g.id, g.costState]).sort(), [[ids.estimated, "estimated"], [ids.unknown, "unknown"]].sort());
   assert.match(home.run("usage", "--since", "2026-11-03", "--until", "2026-11-03").stdout, /no cost record; estimated from prices\.md/);

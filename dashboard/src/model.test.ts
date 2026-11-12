@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { rebuilds, skillUses, type Fact, type Model } from "./model.ts";
+import { byDayKinds, context, costParts, rebuilds, skillUses, type Fact, type Model } from "./model.ts";
 import { parseUrl } from "./state.ts";
 
-const fact = (rb: number[] | null): Fact => ({ s: 0, d: "2026-11-01", h: 0, m: 0, sub: 0, e: 0, q: 1, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb });
+const fact = (rb: number[] | null): Fact => ({ s: 0, d: "2026-11-01", h: 0, m: 0, sub: 0, e: 0, q: 1, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb, k: null });
 
 test("rebuilds sums the facts' vectors per cause and splits the idle ones by gap", () => {
   // start, compaction, idle, other as [count, tokens, extra], then the three idle gap counts.
@@ -29,4 +29,20 @@ test("skillUses sums sessions per skill, listed by source and then most used", (
     { name: "notes", source: "personal", command: 2, agent: 0, errors: 0, sessions: 1, last: "2026-11-02" },
     { name: "pdf", source: "plugin", command: 0, agent: 1, errors: 1, sessions: 1, last: "2026-11-01" },
   ]);
+});
+
+test("context per request counts input, cache reads and cache writes", () => {
+  assert.equal(context({ i: 10, cr: 900, cw: 90, q: 2 }), 500);
+  assert.equal(context({ i: 0, cr: 0, cw: 0, q: 0 }), 0);
+});
+
+test("cost parts keep what the table cannot split only when it is at least 1% of the cost", () => {
+  assert.deepEqual(costParts(10, [5, 2, 1]), [5, 2, 1, 2]);
+  assert.deepEqual(costParts(10, [5, 3, 1.95]), [5, 3, 1.95, 0]);
+});
+
+test("cost per day splits each fact's priced parts and puts the rest of its cost apart", () => {
+  const f = (d: string, c: number, k: number[] | null): Fact => ({ ...fact(null), d, c, k });
+  const rows = byDayKinds([f("2026-11-01", 4, [1, 1, 2]), f("2026-11-01", 3, null), f("2026-11-02", 2, [1, 0.5, 0.5])], ["2026-11-01", "2026-11-02"]);
+  assert.deepEqual(rows, [[1, 1, 2, 3], [1, 0.5, 0.5, 0]]);
 });
