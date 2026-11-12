@@ -75,7 +75,8 @@ export function Columns({ list, rows, groups, metric, share = false, fmt, extra 
           {area ? (
             <div className="bands" aria-hidden="true">
               {groups.map((g, k) => <i key={k} className={g.c} style={{ clipPath: `polygon(${band(k)})` }} />)}
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none">{groups.map((_, k) => <polyline key={k} points={list.map((_, i) => `${px(i)},${py(cum[i][k + 1])}`).join(" ")} />)}</svg>
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">{/* Top group first, so where a group is empty the line of the group below it shows. */}
+                {groups.map((g, k) => <polyline key={k} className={g.c} points={list.map((_, i) => `${px(i)},${py(cum[i][k + 1])}`).join(" ")} />).reverse()}</svg>
             </div>
           ) : null}
           {list.map((d, i) => {

@@ -330,8 +330,12 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 /* Thirty days or more: stacked areas, a column per day still hovered, with a line across the hovered day. */
 .plot .bands, .plot .bands i, .plot .bands svg { position: absolute; inset: 0; pointer-events: none; }
 .plot .bands svg { width: 100%; height: 100%; overflow: visible; }
-.plot .bands i { -webkit-mask-image: linear-gradient(to bottom, #000, rgba(0, 0, 0, .3)); mask-image: linear-gradient(to bottom, #000, rgba(0, 0, 0, .3)); }
-.plot .bands polyline { fill: none; stroke: var(--surface); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+/* Each band a light wash of its color fading toward the axis, under a crisp line in the same color along its top. */
+.plot .bands i { opacity: .42; -webkit-mask-image: linear-gradient(to bottom, #000 20%, rgba(0, 0, 0, .15)); mask-image: linear-gradient(to bottom, #000 20%, rgba(0, 0, 0, .15)); }
+:root[data-theme="dark"] .plot .bands i { opacity: .62; }
+.plot .bands polyline { fill: none; stroke: var(--base); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.plot .bands polyline.c0 { stroke: var(--s0); } .plot .bands polyline.c1 { stroke: var(--s1); } .plot .bands polyline.c2 { stroke: var(--s2); } .plot .bands polyline.c3 { stroke: var(--s3); } .plot .bands polyline.c4 { stroke: var(--s4); } .plot .bands polyline.c5 { stroke: var(--s5); } .plot .bands polyline.csub { stroke: var(--sub); }
+.plot .bands polyline.k0 { stroke: var(--k0); } .plot .bands polyline.k1 { stroke: var(--k1); } .plot .bands polyline.k2 { stroke: var(--k2); } .plot .bands polyline.kw, .plot .bands polyline.kx { stroke: var(--base); }
 .plot.area .col:hover, .plot.area .col:focus-visible { background: none; }
 .plot.area .col:hover::before, .plot.area .col:focus-visible::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ink); opacity: .55; }
 .spark polygon { stroke: none; }
