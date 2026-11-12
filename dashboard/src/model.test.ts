@@ -38,12 +38,12 @@ test("context per request counts input, cache reads and cache writes", () => {
 });
 
 test("cost parts keep what the table cannot split only when it is at least 1% of the cost", () => {
-  assert.deepEqual(costParts(10, [5, 2, 1]), [5, 2, 1, 2]);
-  assert.deepEqual(costParts(10, [5, 3, 1.95]), [5, 3, 1.95, 0]);
+  assert.deepEqual(costParts(10, [5, 2, 1, 0]), [5, 2, 1, 0, 2]);
+  assert.deepEqual(costParts(10, [4, 3, 1.95, 1]), [4, 3, 1.95, 1, 0]);
 });
 
 test("cost per day splits each fact's priced parts and puts the rest of its cost apart", () => {
   const f = (d: string, c: number, k: number[] | null): Fact => ({ ...fact(null), d, c, k });
-  const rows = byDayKinds([f("2026-11-01", 4, [1, 1, 2]), f("2026-11-01", 3, null), f("2026-11-02", 2, [1, 0.5, 0.5])], ["2026-11-01", "2026-11-02"]);
-  assert.deepEqual(rows, [[1, 1, 2, 3], [1, 0.5, 0.5, 0]]);
+  const rows = byDayKinds([f("2026-11-01", 4, [1, 1, 1, 1]), f("2026-11-01", 3, null), f("2026-11-02", 2, [1, 0.5, 0.5, 0])], ["2026-11-01", "2026-11-02"]);
+  assert.deepEqual(rows, [[1, 1, 1, 1, 3], [1, 0.5, 0.5, 0, 0]]);
 });

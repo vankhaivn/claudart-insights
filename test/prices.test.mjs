@@ -59,7 +59,7 @@ test("costs are spread by the price in force on each request's day; a model with
   const data = buildUsageRows(loadConfig(home.config)), fable = data.models.indexOf("Fable");
   for (const f of data.facts) {
     if (f[3] === fable) assert.equal(f[14], null);
-    else if (f[12]) assert.deepEqual(f[14].map((x) => Math.round(x * 1e6) / 1e6), [0, 0, Math.round(f[12] * 1e6) / 1e6]);
+    else if (f[12]) assert.deepEqual(f[14].map((x) => Math.round(x * 1e6) / 1e6), [0, 0, Math.round(f[12] * 1e6) / 1e6, 0]);
   }
   const rows = data.sessions;
   assert.deepEqual(rows.filter((s) => s.priceOff.length).map((s) => [s.id, s.priceOff]), [[ids.split.slice(0, 8), ["claude-opus-5-5[1m]"]], [ids.miss.slice(0, 8), ["claude-opus-5-5"]]]);

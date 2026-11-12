@@ -21,9 +21,9 @@ export function Models({ F }: { F: Fact[] }) {
   }).filter((r) => r.count).sort((a, b) => b.count - a.count);
   const subOut = per.reduce((n, r) => n + r.sub, 0);
   const models = M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
-  // Each model's cost split by what it paid for; the part the table cannot split is named only when some model has it.
+  // Each model's cost split by what it paid for; web search and the part the table cannot split are named only when some model has them.
   const kinds = useCostKinds(), parts = (r: (typeof per)[number]) => costParts(r.tt.c, r.tt.k);
-  const shown = kinds.filter((_, j) => j < 3 || per.some((r) => parts(r)[3]));
+  const shown = kinds.filter((_, j) => j < 3 || per.some((r) => parts(r)[j]));
 
   if (!per.length) return <section className="card"><Empty /></section>;
   // The model's whole cost as one bar, its parts labelled with their share when there is room; amounts in the tooltip.

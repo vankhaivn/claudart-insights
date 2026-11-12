@@ -101,3 +101,27 @@ test("the dashboard rows give the usage totals", () => {
   assert.equal(inWindow.reduce((n, f) => n + f[8], 0), all.o);
   assert.ok(Math.abs(inWindow.reduce((n, f) => n + f[12], 0) - all.c) < 1e-9);
 });
+
+test("a cost with no request is split by the host's tokens, and web search is what a model cost beyond its tokens", () => {
+  const home = makeHome();
+  writeFileSync(join(home.dir, "prices.md"), ["| model | from | input | output | cache read | cache write 5m | cache write 1h |", "| --- | --- | --- | --- | --- | --- | --- |",
+    "| claude-opus-5-5 | 2026-10-01 | 4 | 20 | 0.20 | 5 | 8 |", "| claude-haiku-5-5 | 2026-10-01 | 0.10 | 0.50 | 0.01 | 0.125 | 0.20 |"].join("\n") + "\n");
+  const dir = join(home.dir, "work", "gamma");
+  mkdirSync(join(dir, ".git"), { recursive: true });
+  const s = sid(70);
+  // Opus searched twice and has its request in the transcript; Haiku searched three times in the background, with no request.
+  writeTranscript(home.transcripts, "gamma", s, [
+    user("2026-11-05T01:00:00Z", "look it up", { cwd: dir }),
+    assistant("2026-11-05T01:00:05Z", "g1", { input_tokens: 1000, output_tokens: 1000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, { rec: { cwd: dir } }),
+    cost(0.114, { modelUsage: {
+      "claude-opus-5-5": { costUSD: 0.044, inputTokens: 1000, outputTokens: 1000, webSearchRequests: 2 },
+      "claude-haiku-5-5": { costUSD: 0.07, inputTokens: 100000, outputTokens: 20000, cacheReadInputTokens: 1000000, cacheCreationInputTokens: 50000, cacheCreationEphemeral5mInputTokens: 0, cacheCreationEphemeral1hInputTokens: 50000, webSearchRequests: 3 },
+    } }),
+  ]);
+  home.run("scan");
+  const data = buildUsageRows(loadConfig(home.config));
+  const k = (m) => data.facts.find((f) => f[3] === data.models.indexOf(m))[14].map((x) => Math.round(x * 1e4) / 1e4);
+  assert.deepEqual(k("Opus"), [0.004, 0, 0.02, 0.02]);
+  assert.deepEqual(k("Haiku"), [0.02, 0.01, 0.01, 0.03]);
+  assert.ok(Math.abs(data.facts.reduce((n, f) => n + f[12], 0) - 0.114) < 1e-9);
+});

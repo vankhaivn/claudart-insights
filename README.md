@@ -116,6 +116,8 @@ A session's project is the nearest folder at or above its working directory that
 
 Claude Code records a cost per session; Insights uses that figure and spreads it over the session's requests by their tokens priced on their own day from [prices.md](prices.md) (USD per million tokens, one row per model and start date). A session without a cost record is estimated from the table and marked as such. `prices` and the scan report show where Claude Code's figures and the table disagree; add a row from the day a price changes and never edit an old row.
 
+Each cost is split into what it paid for: reading the context, cache writes, output and web search. Claude Code also calls models in the background, Haiku for the WebSearch tool among them, without writing those calls to the transcript; their cost is split by the tokens Claude Code recorded for that model. Web search is what a model that searched the web cost beyond its tokens priced from the table. A model without a price row stays as "Not split".
+
 Cost is list price. On a subscription it is quota spent, not money.
 
 </details>

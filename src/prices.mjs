@@ -54,6 +54,13 @@ export function costKinds(p, r) {
   return [(r.input * p[0] + r.cache_read * p[2]) / 1e6, (w5 * p[3] + w1 * p[4]) / 1e6, (r.output * p[1]) / 1e6];
 }
 
+// A host cost record's tokens for one model, priced and split as costKinds splits a request;
+// writes the host did not split into 5m and 1h are priced as 1h writes.
+export function usageKinds(p, u) {
+  const writes = u.split ? u.w5 * p[3] + u.w1 * p[4] : u.write * p[4];
+  return [(u.input * p[0] + u.read * p[2]) / 1e6, writes / 1e6, (u.output * p[1]) / 1e6];
+}
+
 // A host cost record's tokens for one model, priced; without the split, the range from all-5m to all-1h writes.
 export function usageCost(p, u) {
   const base = (u.input * p[0] + u.output * p[1] + u.read * p[2]) / 1e6;

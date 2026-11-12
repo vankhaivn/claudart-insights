@@ -128,6 +128,13 @@ for (let d = DAYS - 1; d >= 0; d--) {
     const r = thread({ t: start.getTime(), model: main, effort: (turn) => (turn >= switchAt ? levels[1] : levels[0]), longCache: rnd() < 0.3, turns: int(3, 26), cwd,
       owner: (turn) => (turn ? "Continue with the next step" : "Let's work on this"), onTask });
     for (const [m, u] of Object.entries(r.usage)) Object.assign(usageAll[m] ??= { costUSD: 0 }, Object.fromEntries(Object.entries(u).map(([key, v]) => [key, (usageAll[m]?.[key] ?? 0) + v])));
+    // Every third session searched the web: Claude Code runs Haiku in the background for it and writes no request to the transcript.
+    if (k % 3 === 0) {
+      const searches = (k % 5) + 1, u = { inputTokens: 9000 * searches, outputTokens: 700 * searches, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, webSearchRequests: searches };
+      const h = (usageAll[MODELS.haiku] ??= { costUSD: 0 });
+      for (const [key, v] of Object.entries(u)) h[key] = (h[key] ?? 0) + v;
+      h.costUSD += (u.inputTokens * 0.1 + u.outputTokens * 0.5) / 1e6 + searches * 0.01;
+    }
     const title = `${VERBS[int(0, VERBS.length - 1)]} ${THINGS[int(0, THINGS.length - 1)]}`, total = Object.values(usageAll).reduce((n, u) => n + u.costUSD, 0);
     const end = { ...cost(total, { startTime: start.getTime(), modelUsage: usageAll }), totalAPIDuration: Math.round((r.api + subTool) * 1000), totalToolDuration: Math.round(r.tool * 1000),
       totalLinesAdded: r.edits * int(15, 70), totalLinesRemoved: r.edits * int(2, 14), sessionId: session };

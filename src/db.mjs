@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // Bump when the schema changes: the database is then rebuilt from the archive.
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const SCHEMA = `
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
@@ -45,7 +45,7 @@ CREATE TABLE titles(file_id INTEGER, line INTEGER, session_id TEXT, kind TEXT, t
 CREATE TABLE sessions(id TEXT PRIMARY KEY, provider TEXT, slug TEXT, cwd TEXT, project TEXT, title TEXT, first_ts TEXT,
   last_ts TEXT, cost REAL, cost_incomplete INTEGER, cost_estimated INTEGER, price_check TEXT, api_ms INTEGER, tool_ms INTEGER,
   lines_added INTEGER, lines_removed INTEGER, carried_from TEXT,
-  model_cost TEXT);
+  model_cost TEXT, model_tokens TEXT);
 `;
 
 // Tables holding rows ingested from one transcript file; used when a file starts a new generation.
