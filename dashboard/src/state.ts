@@ -2,7 +2,7 @@
 // query. Filters are kept by name, so a link still means the same project after new data reorders the lists.
 // Defaults are left out of the URL.
 
-export const VIEWS = ["overview", "projects", "sessions", "models", "subagents", "activity"] as const;
+export const VIEWS = ["overview", "activity", "models", "projects", "sessions", "subagents"] as const;
 // A built-in view, or the id of one a host package adds.
 export type View = string;
 export const RANGES = ["1", "7", "14", "30", "all"] as const;
