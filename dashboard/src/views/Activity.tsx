@@ -32,7 +32,6 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
     <Kpi label={label} value={value} d={<Delta a={a} b={p ? b : undefined} side="none" />} series={series} />
   );
 
-  const tools = toolCalls(M, w.ids).slice(0, 12), tmax = Math.max(1, ...tools.map(([, [c]]) => c));
   return (
     <div className="stack">
       <div className="grid kpis">
@@ -59,14 +58,7 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
       </section>
       <Rebuilds F={F} />
       <div className="grid half">
-      <section className="card">
-        <header><h2>{t("tools")}</h2><span className="hint">{f.int(tools.reduce((n, [, [c]]) => n + c, 0))} {t("calls")}</span></header>
-        {tools.length ? <div className="rank tools">{tools.map(([n, [c, e]]) => [
-          <span key={`n${n}`} className="n">{n}</span>,
-          <span key={`t${n}`} className="t"><span className="b" style={{ width: `${(c / tmax) * 100}%` }} data-tip={tip(n, [["c1", t("calls"), f.int(c)], ["neg", t("errors"), f.int(e)]])}>{e ? <i style={{ width: `max(2px, ${(e / c) * 100}%)` }} /> : null}</span></span>,
-          <span key={`v${n}`} className="val">{f.int(c)}<small className={e ? "err" : ""}>{f.pct(e / c)} {t("errors")}</small></span>,
-        ])}</div> : <Empty />}
-      </section>
+      <Tools ids={w.ids} />
       <Skills ids={w.ids} />
       </div>
     </div>
@@ -74,6 +66,30 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
 }
 
 const SHOWN = 12;
+
+// Tool calls, most used first, each with its failed part; the lead says how many failed and which tool most of them came
+// from. Past SHOWN rows the rest opens below.
+function Tools({ ids }: { ids: number[] }) {
+  const { M, t, L, f } = useDash();
+  const [all, setAll] = useState(false);
+  const rows = toolCalls(M, ids), shown = all ? rows : rows.slice(0, SHOWN);
+  const calls = rows.reduce((n, [, [c]]) => n + c, 0), errs = rows.reduce((n, [, [, e]]) => n + e, 0), tmax = Math.max(1, ...rows.map(([, [c]]) => c));
+  const worst = [...rows].sort((a, b) => b[1][1] - a[1][1])[0];
+  return (
+    <section className="card">
+      <header><h2>{t("tools")}</h2><span className="hint">{f.int(calls)} {t("calls")} · {f.int(rows.length)} {t("toolCount")}</span></header>
+      {errs ? <p className="lead">{L.toolLead(f.int(errs), f.pct(errs / calls), f.pct(worst[1][1] / errs), worst[0])}</p> : null}
+      {rows.length ? <div className="rank tools">{shown.map(([n, [c, e]]) => [
+        <span key={`n${n}`} className="n" title={n}>{n}</span>,
+        <span key={`t${n}`} className="t"><span className="b" style={{ width: `${(c / tmax) * 100}%` }} data-tip={tip(n, [["c1", t("calls"), f.int(c)], ["neg", t("errors"), f.int(e)]])}>{e ? <i style={{ width: `max(2px, ${(e / c) * 100}%)` }} /> : null}</span></span>,
+        <span key={`v${n}`} className="val">{f.int(c)}<small className={e ? "err" : ""}>{f.pct(e / c)} {t("errors")}</small></span>,
+      ])}</div> : <Empty />}
+      {rows.length > SHOWN ? <button type="button" className="disc more" aria-expanded={all} onClick={() => setAll(!all)}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4" /></svg>{all ? t("showFewer") : `${t("seeAll")} (${rows.length})`}
+      </button> : null}
+    </section>
+  );
+}
 const SOURCE = { project: "srcProject", personal: "srcPersonal", plugin: "srcPlugin", builtin: "srcBuiltin", other: "srcOther" } as const;
 
 // Skills by where they were loaded from, most used first: each bar splits what the owner typed as a command from what the
@@ -114,7 +130,7 @@ function Skills({ ids }: { ids: number[] }) {
 // Where the prompt cache had to be written again: the four causes with their count, rewritten tokens and extra cost
 // over reading it; beside it, the idle ones by the time since the previous request.
 function Rebuilds({ F }: { F: Fact[] }) {
-  const { t, f } = useDash();
+  const { t, L, f } = useDash();
   const r = rebuilds(F);
   const rows = [["idle", t("rbIdle"), t("rbIdleTip")], ["compaction", t("rbCompaction"), t("rbCompactionTip")], ["other", t("rbOther"), t("rbOtherTip")], ["start", t("rbStart"), t("rbStartTip")]] as const;
   const count = r.start.n + r.compaction.n + r.idle.n + r.other.n;
@@ -143,6 +159,7 @@ function Rebuilds({ F }: { F: Fact[] }) {
       </section>
       <section className="card">
         <header><h2>{t("idleGap")}</h2><span className="hint">{t("rbIdle")}: {f.int(r.idle.n)}</span></header>
+        {r.idle.n ? <p className="lead">{L.idleLead(f.usd(r.idle.extra / r.idle.n), f.pct(r.gaps[2] / r.idle.n))}</p> : null}
         {r.idle.n ? <div className="rank">{gaps.map((label, k) => [
           <span key={`n${k}`} className="n">{label}</span>,
           <span key={`t${k}`} className="t">{r.gaps[k] ? <span className="b" style={{ width: `${(r.gaps[k] / gmax) * 100}%` }} /> : null}</span>,
