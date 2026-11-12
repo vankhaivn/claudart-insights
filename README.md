@@ -132,7 +132,7 @@ Claude Code keeps your conversation in a prompt cache, so most input tokens are 
 | After idle | The gap since the thread's previous request is longer than the cache lives: 1 hour if the thread's latest cache write included 1h cache, otherwise 5 minutes. Split into 5 to 15 minutes, 15 to 60 minutes and over an hour |
 | Other | Anything else |
 
-The extra cost of a rebuild is the rewritten tokens priced as cache writes (5m and 1h as recorded) minus the same tokens priced as reads, from the price row in force that day. The Sessions view's "Cache lapses" column counts the idle rebuilds in each session.
+The extra cost of a rebuild is the rewritten tokens priced as cache writes (5m and 1h as recorded) minus the same tokens priced as reads, from the price row in force that day. The Sessions view counts the idle rebuilds of each session as cache lapses, under its title.
 
 `other` cannot be explained from transcripts. The 20,000-token and one-half thresholds are a fixed convention, not something Claude Code reports. A model without a price row has no extra cost, and its rebuilds are counted without one.
 

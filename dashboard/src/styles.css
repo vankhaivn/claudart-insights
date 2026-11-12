@@ -149,6 +149,7 @@ thead th[aria-sort] button { color: var(--ink); font-weight: 600; }
 .ph { display: none !important; }
 .sub { display: block; margin-top: 2px; color: var(--ink2); font-size: 12.5px; font-weight: 400; }
 .title { min-width: 140px; max-width: 260px; overflow: hidden; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.sesstable .title, .sesstable td .sub { max-width: 460px; white-space: normal; } .sesstable .nw { white-space: nowrap; }
 tbody tr.go { cursor: pointer; }
 tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .mix { display: flex; gap: 2px; width: 84px; height: 8px; margin-top: 5px; }
