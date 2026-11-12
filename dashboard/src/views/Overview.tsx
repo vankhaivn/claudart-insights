@@ -12,15 +12,15 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
   const daily = (pick: (x: Fact[]) => number) => list.map((d) => pick(F.filter((x) => x.d === d)));
   const tile = (label: string, value: ReactNode, d: ReactNode, series: number[]) => <Kpi label={label} value={value} d={d} series={series} />;
   const metric = S.metric, flags = useCostFlags(F);
-  // Cost can split by what it paid for instead of by model; the part that cannot be split shows only when present.
+  // Cost can split by what it paid for instead of by model; web search and the part that cannot be split show only when present.
   const kinds = useCostKinds(), byKind = metric === "cost" && S.split === "kind";
   const slots = slotsOf(list), hourly = slots !== list;
   const kindRows = byKind ? byDayKinds(F, slots) : [];
-  const keep = byKind && kindRows.some((r) => r[3]) ? 4 : 3;
-  const groups = byKind ? kinds.slice(0, keep) : metric === "sess" ? [{ n: t("sess"), c: "c1" }] : M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
-  const rows = byKind ? kindRows.map((r) => r.slice(0, keep)) : metric === "sess" ? byDay(F, slots, () => 0, groups, "sess") : byDay(F, slots, (x) => x.m, groups, metric);
+  const keep = kinds.map((_, j) => j < 3 || kindRows.some((r) => r[j]));
+  const groups = byKind ? kinds.filter((_, j) => keep[j]) : metric === "sess" ? [{ n: t("sess"), c: "c1" }] : M.models.map((n, i) => ({ n, c: "c" + (i + 1) }));
+  const rows = byKind ? kindRows.map((r) => r.filter((_, j) => keep[j])) : metric === "sess" ? byDay(F, slots, () => 0, groups, "sess") : byDay(F, slots, (x) => x.m, groups, metric);
   // The window's cost by kind, with the tokens behind each part: input counts with the cache reads it sits beside.
-  const spent = costParts(now.c, now.k), tokens = [now.i + now.cr, now.cw, now.o, 0];
+  const spent = costParts(now.c, now.k), tokens = [now.i + now.cr, now.cw, now.o, 0, 0];
   const sums = groups.map((_, k) => rows.reduce((n, r) => n + r[k], 0));
   const gm = group(F, (x) => x.m, metric), gp = group(F, (x) => M.sessions[x.s].p, metric);
   const models = M.models.map((n, i) => ({ n, c: "c" + (i + 1), v: gm.get(i) || 0 })).filter((r) => r.v).sort((a, b) => b.v - a.v);

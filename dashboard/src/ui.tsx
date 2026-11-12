@@ -90,10 +90,10 @@ export function Legend({ groups, sums, metric, style }: { groups: Group[]; sums?
   );
 }
 
-// The parts of a cost, in costParts order, with their neutral colors; the last one is only outlined.
+// The parts of a cost, in costParts order, with their neutral colors; web search is striped, the rest only outlined.
 export function useCostKinds(): Group[] {
   const { t } = useDash();
-  return [{ n: t("kRead"), c: "k0" }, { n: t("kWrite"), c: "k1" }, { n: t("kOut"), c: "k2" }, { n: t("kRest"), c: "kx" }];
+  return [{ n: t("kRead"), c: "k0" }, { n: t("kWrite"), c: "k1" }, { n: t("kOut"), c: "k2" }, { n: t("kWeb"), c: "kw" }, { n: t("kRest"), c: "kx" }];
 }
 
 // How a cost chart splits its columns: by model or by what the money paid for.

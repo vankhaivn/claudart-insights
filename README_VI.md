@@ -116,6 +116,8 @@ Dự án của một phiên là thư mục gần nhất, từ thư mục làm vi
 
 Claude Code ghi chi phí cho mỗi phiên; Insights dùng con số đó và chia cho các request của phiên theo token, tính giá của chính ngày hôm đó trong [prices.md](prices.md) (USD cho một triệu token, mỗi dòng ứng với một model và ngày bắt đầu hiệu lực). Phiên không có bản ghi chi phí được ước tính từ bảng giá và được đánh dấu. `prices` và báo cáo của lần quét cho biết chỗ số của Claude Code lệch bảng giá; hãy thêm dòng mới từ ngày giá đổi, đừng sửa dòng cũ.
 
+Mỗi khoản chi phí được tách theo thứ nó trả cho: đọc context, ghi cache, output và web search. Claude Code còn gọi model ngầm, trong đó có Haiku cho công cụ WebSearch, mà không ghi các lần gọi đó vào transcript; chi phí của chúng được tách theo số token Claude Code đã ghi cho model đó. Web search là phần một model có tìm kiếm web tốn thêm ngoài số token của nó tính theo bảng giá. Model chưa có dòng giá thì giữ nguyên là "Không tách được".
+
 Chi phí tính theo giá niêm yết. Với gói thuê bao, đó là hạn mức đã dùng, không phải tiền.
 
 </details>

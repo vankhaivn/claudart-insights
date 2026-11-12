@@ -34,13 +34,13 @@ export function derive(db, config) {
   const prices = readPrices(config).rows;
   const zone = zoner(config.timeZone);
   const upsert = db.prepare(`INSERT INTO sessions(id, provider, slug, cwd, project, title, first_ts, last_ts, cost, cost_incomplete, cost_estimated, price_check,
-      api_ms, tool_ms, lines_added, lines_removed, carried_from, model_cost)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      api_ms, tool_ms, lines_added, lines_removed, carried_from, model_cost, model_tokens)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, slug = excluded.slug, cwd = excluded.cwd, project = excluded.project, title = excluded.title,
       first_ts = excluded.first_ts, last_ts = excluded.last_ts, cost = excluded.cost, cost_incomplete = excluded.cost_incomplete,
       cost_estimated = excluded.cost_estimated, price_check = excluded.price_check,
       api_ms = excluded.api_ms, tool_ms = excluded.tool_ms, lines_added = excluded.lines_added, lines_removed = excluded.lines_removed,
-      carried_from = excluded.carried_from, model_cost = excluded.model_cost`);
+      carried_from = excluded.carried_from, model_cost = excluded.model_cost, model_tokens = excluded.model_tokens`);
 
   const raw = new Map();
   for (const f of files) {
@@ -59,6 +59,7 @@ export function derive(db, config) {
       const c = raw.get(f.session_id);
       let cost = null;
       let models = null;
+      let tokens = null;
       let estimated = null;
       let check = null;
       let api = c?.api_ms ?? null;
@@ -99,6 +100,8 @@ export function derive(db, config) {
         }
         const known = Object.values(models).map((u) => u.cost).filter((v) => v !== null);
         if (known.length) cost = known.reduce((a, b) => a + b, 0);
+        // The tokens the host priced per model, to split a cost the transcript holds no request for.
+        tokens = Object.fromEntries(Object.entries(models).map(([m, u]) => [m, { input: u.input, output: u.output, read: u.read, write: u.write, w5: u.w5, w1: u.w1, split: u.split, web: u.web }]));
         models = Object.fromEntries(Object.entries(models).map(([m, u]) => [m, u.cost]));
         if (!known.length && c.cost !== null) {
           cost = carriedFrom ? Math.max(0, c.cost - (prev.cost ?? 0)) : c.cost;
@@ -116,7 +119,7 @@ export function derive(db, config) {
         }
       }
       upsert.run(f.session_id, f.provider, f.path.split(sep)[0], f.cwd, project, title, f.first_ts, f.last_ts, cost,
-        c ? (c.incomplete ? 1 : 0) : null, estimated, check ? JSON.stringify(check) : null, api, tool, added, removed, carriedFrom, models ? JSON.stringify(models) : null);
+        c ? (c.incomplete ? 1 : 0) : null, estimated, check ? JSON.stringify(check) : null, api, tool, added, removed, carriedFrom, models ? JSON.stringify(models) : null, tokens ? JSON.stringify(tokens) : null);
     }
     db.exec("COMMIT");
   } catch (err) {

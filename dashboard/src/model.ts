@@ -72,6 +72,7 @@ export function rebuilds(F: Fact[]): Rebuilds {
 
 // A cost as [reading the context, writing the cache, output, what the price table cannot split]: the last part is a
 // model without a price row, or a cost the host charged without a request in the transcript; under 1% it is dropped.
+// A cost as reading the context, writing the cache, output, web search and the rest the price table cannot split.
 export function costParts(c: number, k: number[]) {
   const rest = c - k.reduce((a, b) => a + b, 0);
   return [...k, rest > c * 0.01 ? rest : 0];
@@ -81,21 +82,22 @@ export function costParts(c: number, k: number[]) {
 export function byDayKinds(F: Fact[], list: (string | number)[]) {
   const slot = typeof list[0] === "number" ? (f: Fact) => f.h : (f: Fact) => f.d;
   const idx = new Map<string | number, number>(list.map((d, i) => [d, i]));
-  const rows = list.map(() => [0, 0, 0, 0]);
+  const rows = list.map(() => [0, 0, 0, 0, 0]);
   for (const f of F) {
     const i = idx.get(slot(f));
     if (i === undefined) continue;
-    const k = f.k ?? [0, 0, 0];
-    rows[i][0] += k[0]; rows[i][1] += k[1]; rows[i][2] += k[2]; rows[i][3] += f.c - k[0] - k[1] - k[2];
+    const k = f.k ?? [0, 0, 0, 0];
+    for (let j = 0; j < 4; j++) rows[i][j] += k[j];
+    rows[i][4] += f.c - k[0] - k[1] - k[2] - k[3];
   }
   // A rounding remainder is not a part of its own.
-  for (const r of rows) if (r[3] < (r[0] + r[1] + r[2] + r[3]) * 0.01) r[3] = 0;
+  for (const r of rows) if (r[4] < r.reduce((a, b) => a + b, 0) * 0.01) r[4] = 0;
   return rows;
 }
 
 export type Totals = ReturnType<typeof totals>;
 export function totals(M: Model, F: Fact[]) {
-  const a = { o: 0, c: 0, i: 0, cr: 0, cw: 0, q: 0, th: 0, n: 0, hit: 0, ctx: 0, tps: 0, k: [0, 0, 0], sess: new Set<number>() };
+  const a = { o: 0, c: 0, i: 0, cr: 0, cw: 0, q: 0, th: 0, n: 0, hit: 0, ctx: 0, tps: 0, k: [0, 0, 0, 0], sess: new Set<number>() };
   for (const f of F) { a.o += f.o; a.c += f.c; a.i += f.i; a.cr += f.cr; a.cw += f.cw; a.q += f.q; a.th += f.th; a.sess.add(f.s); f.k?.forEach((x, j) => { a.k[j] += x; }); }
   const ss = [...a.sess].map((s) => M.sessions[s]);
   a.n = a.sess.size; a.hit = a.cr / (a.cr + a.cw + a.i || 1); a.ctx = context(a);

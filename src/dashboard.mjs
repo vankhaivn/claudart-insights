@@ -19,7 +19,7 @@ export function dashboardData(db, config, now = new Date()) {
     transcripts: db.prepare("SELECT COUNT(*) n FROM files WHERE kind = 'main'").get().n,
     sessions: rows.sessions.map((s) => ({ ...s, id: s.id.slice(0, 8), dur: round(s.dur, 2), tool: round(s.tool, 1), runs: (runs.get(s.id) ?? []).map((r) => [ei(r.level), r.requests]) })),
     // rb: the rebuild vector of src/usage.mjs, or null when no request of the fact rebuilt the cache.
-    // k: the cost split into reading the context, writing the cache and output, or null when nothing of it was priced.
+    // k: the cost split into reading the context, writing the cache, output and web search, or null when nothing of it was priced.
     facts: rows.facts.map((f) => [f.s, f.d, f.h, f.m, f.sub, ei(f.e), f.q, f.i, f.o, f.cr, f.cw, f.th, f.c, f.rb && f.rb.map((x) => round(x)), f.k && f.k.map((x) => round(x))]),
     subagents: rows.subagents.map((a) => ({ ...a, type: types.indexOf(a.type) })),
     tools: rows.tools.map(shortToolNames),

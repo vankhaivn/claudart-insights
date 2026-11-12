@@ -1,7 +1,7 @@
 // Usage rows shared by the `usage` command and the dashboard, so their totals cannot differ.
 import { familyOf } from "./providers/claude.mjs";
 import { zoner } from "./zone.mjs";
-import { costKinds, priceAt, priceReport, readPrices, requestCost } from "./prices.mjs";
+import { costKinds, priceAt, priceReport, readPrices, requestCost, usageKinds } from "./prices.mjs";
 import { CAUSES } from "./rebuilds.mjs";
 
 const FAMILY_NAMES = { opus: "Opus", sonnet: "Sonnet", haiku: "Haiku", fable: "Fable" };
@@ -114,13 +114,21 @@ export function loadRows(db, config, now = new Date()) {
 
     // Spread each model's host cost over that model's requests by their tokens priced on their day,
     // so a later price never moves cost between earlier days; a model without a price row is spread by output tokens.
+    // Cost is split into reading the context, writing the cache, output and web search: web search is what the host
+    // charged a model that searched the web beyond its tokens priced from the host record.
     const costOf = new Map();
     const kindsOf = new Map();
     const unplaced = [];
+    const tokens = s.model_tokens ? JSON.parse(s.model_tokens) : {};
     for (const [key, value] of Object.entries(s.model_cost ? JSON.parse(s.model_cost) : {})) {
       if (!value) continue;
+      const u = tokens[key], row = u && priceAt(prices, key, day);
+      const host = row ? usageKinds(row.p, u) : null;
+      const priced0 = host ? host.reduce((a, b) => a + b, 0) : 0;
+      const web = host && u.web ? Math.max(0, value - priced0) : 0;
       const targets = spreadTargets(key, reqs);
-      if (!targets.length) unplaced.push([key, value]);
+      // A model the host charged with no request in the transcript is split by the host record's own tokens.
+      if (!targets.length) unplaced.push([key, value, host && priced0 ? [...host.map((x) => (x * (value - web)) / priced0), web] : null]);
       const rows = targets.map((r) => priceAt(prices, r.model, r.day));
       const priced = rows.every(Boolean);
       if (!priced) for (const r of targets) if (!sessions[i].unpriced.includes(r.model)) sessions[i].unpriced.push(r.model);
@@ -129,10 +137,10 @@ export function loadRows(db, config, now = new Date()) {
       targets.forEach((r, k) => {
         const share = value * (total ? weight[k] / total : 1 / targets.length);
         costOf.set(r, (costOf.get(r) ?? 0) + share);
-        // The share split as the price table splits the request: reading the context, writing the cache, output.
+        // The share split as the price table splits the request, after its part of the web search.
         if (priced && weight[k]) {
-          const kinds = costKinds(rows[k].p, r), had = kindsOf.get(r) ?? [0, 0, 0];
-          kindsOf.set(r, had.map((x, j) => x + (share * kinds[j]) / weight[k]));
+          const kinds = costKinds(rows[k].p, r), had = kindsOf.get(r) ?? [0, 0, 0, 0], tok = share * (1 - web / value);
+          kindsOf.set(r, had.map((x, j) => x + (j < 3 ? (tok * kinds[j]) / weight[k] : share - tok)));
         }
       });
     }
@@ -141,7 +149,7 @@ export function loadRows(db, config, now = new Date()) {
       const f = facts.get(key) ?? facts.set(key, { s: i, d, h, m: modelIdx(family), sub, e: effort, q: 0, i: 0, o: 0, cr: 0, cw: 0, th: 0, c: 0, rb: null, k: null }).get(key);
       for (const [k, v] of Object.entries(add)) f[k] += v;
       if (kinds) {
-        f.k ??= [0, 0, 0];
+        f.k ??= [0, 0, 0, 0];
         kinds.forEach((x, j) => { f.k[j] += x; });
       }
       if (rb) {
@@ -151,7 +159,7 @@ export function loadRows(db, config, now = new Date()) {
     };
     for (const r of reqs) put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0 }, rebuildVector(r), kindsOf.get(r));
     // A model the host charged with no request in the transcript lands on the session's first hour.
-    for (const [key, value] of unplaced) put(day, hour, key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key), 0, sessions[i].effort, { c: value });
+    for (const [key, value, kinds] of unplaced) put(day, hour, key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key), 0, sessions[i].effort, { c: value }, null, kinds);
   }
 
   const subagents = [];

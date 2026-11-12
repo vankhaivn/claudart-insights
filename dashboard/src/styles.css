@@ -3,7 +3,7 @@
   --hair: #e4e3dc; --base: #c9c8be; --wash: rgba(11,11,11,.045); --accent: #2a78d6; --accent-ink: #1c5cab;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s0: #b9b8b0; --sub: #6d4fe8; --seq: #2a78d6;
   --v0: #c9c4fb; --v1: #9d93f5; --v2: #6f5ce6; --v3: #4630c0; --v4: #26177a;
-  --k0: #dcdad2; --k1: #a5a39a; --k2: #64625c;
+  --k0: #dcdad2; --k1: #a5a39a; --k2: #64625c; --kw: repeating-linear-gradient(135deg, #dcdad2 0 4px, #c2c0b8 4px 8px);
   --good: #0ca30c; --up: #1c5cab; --neg: #d03b3b; --shadow: 0 8px 28px rgba(0,0,0,.10);
   --sb: rgba(11,11,11,.18); --sb-hover: rgba(11,11,11,.34);
 }
@@ -12,7 +12,7 @@
   --hair: #2c2c2a; --base: #44443f; --wash: rgba(255,255,255,.06); --accent: #3987e5; --accent-ink: #86b6ef;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s0: #5a5a55; --sub: #7b66f0; --seq: #3987e5;
   --v0: #30286a; --v1: #4e42ae; --v2: #7c6ff0; --v3: #b2abff; --v4: #e4e1ff;
-  --k0: #585853; --k1: #8a8981; --k2: #c4c2ba;
+  --k0: #585853; --k1: #8a8981; --k2: #c4c2ba; --kw: repeating-linear-gradient(135deg, #585853 0 4px, #6e6d67 4px 8px);
   --good: #0ca30c; --up: #86b6ef; --neg: #e66767; --shadow: 0 8px 28px rgba(0,0,0,.5);
   --sb: rgba(255,255,255,.16); --sb-hover: rgba(255,255,255,.32);
 }
@@ -163,15 +163,16 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .heat .cell { aspect-ratio: 1 / 1; max-height: 26px; width: 100%; border-radius: 3px; background: color-mix(in srgb, var(--seq) var(--m), var(--wash)); }
 .heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
 .split { display: flex; gap: 2px; height: 28px; margin: 4px 0 12px; }
-.split i { display: flex; align-items: center; padding: 0 9px; border-radius: 4px; color: #fff; font-size: 12.5px; font-style: normal; font-weight: 600; overflow: hidden; white-space: nowrap; }
+.split i { display: flex; align-items: center; padding: 0 9px; border-radius: 4px; color: #fff; font-size: 12.5px; font-style: normal; font-weight: 600; overflow: hidden; white-space: nowrap; } .split i:empty { padding: 0; }
 .split i.c4 { color: #0b0b0b; } .split i.c0 { color: var(--ink); }
 .money td.wide, .money th.wide { width: 55%; }
-.rank .b.k0 { background: var(--k0); } .rank .b.k1 { background: var(--k1); } .rank .b.k2 { background: var(--k2); } .rank .b.kx { background: transparent; box-shadow: inset 0 0 0 1px var(--base); }
+.rank .b.k0 { background: var(--k0); } .rank .b.k1 { background: var(--k1); } .rank .b.k2 { background: var(--k2); } .rank .b.kw { background: var(--kw); } .rank .b.kx { background: transparent; box-shadow: inset 0 0 0 1px var(--base); }
 .split.kinds { height: 24px; min-width: 240px; margin: 0; cursor: default; }
-/* Cost kinds: a neutral ramp, so money reads as neither gained nor lost; a part that cannot be split is only outlined. */
-.k0 { background: var(--k0); } .k1 { background: var(--k1); } .k2 { background: var(--k2); } .kx { background: transparent; box-shadow: inset 0 0 0 1px var(--base); }
-.split i.k0, .split i.k1 { color: #0b0b0b; } .split i.k2 { color: #fff; } .split i.kx { color: var(--ink2); }
-:root[data-theme="dark"] .split i.k0, :root[data-theme="dark"] .split i.k1 { color: #fff; } :root[data-theme="dark"] .split i.k2 { color: #0b0b0b; }
+/* Cost kinds: a neutral ramp, so money reads as neither gained nor lost; web search, a fee rather than tokens, is striped;
+   a part that cannot be split is only outlined. */
+.k0 { background: var(--k0); } .k1 { background: var(--k1); } .k2 { background: var(--k2); } .kw { background: var(--kw); } .kx { background: transparent; box-shadow: inset 0 0 0 1px var(--base); }
+.split i.k0, .split i.k1, .split i.kw { color: #0b0b0b; } .split i.k2 { color: #fff; } .split i.kx { color: var(--ink2); }
+:root[data-theme="dark"] .split i.k0, :root[data-theme="dark"] .split i.k1, :root[data-theme="dark"] .split i.kw { color: #fff; } :root[data-theme="dark"] .split i.k2 { color: #0b0b0b; }
 .note { margin: 14px 0 0; color: var(--ink2); font-size: 12.5px; }
 .empty { padding: 40px 0; text-align: center; color: var(--ink2); }
 #tip { position: fixed; z-index: 9; display: none; min-width: 150px; max-width: 400px; padding: 10px 12px; border: 1px solid var(--base); border-radius: 10px; background: var(--raised); box-shadow: var(--shadow); font-size: 12.5px; pointer-events: none; }
