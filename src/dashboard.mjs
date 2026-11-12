@@ -20,7 +20,8 @@ export function dashboardData(db, config, now = new Date()) {
     sessions: rows.sessions.map((s) => ({ ...s, id: s.id.slice(0, 8), dur: round(s.dur, 2), tool: round(s.tool, 1), runs: (runs.get(s.id) ?? []).map((r) => [ei(r.level), r.requests]) })),
     // rb: the rebuild vector of src/usage.mjs, or null when no request of the fact rebuilt the cache.
     // k: the cost split into reading the context, writing the cache, output and web search, or null when nothing of it was priced.
-    facts: rows.facts.map((f) => [f.s, f.d, f.h, f.m, f.sub, ei(f.e), f.q, f.i, f.o, f.cr, f.cw, f.th, f.c, f.rb && f.rb.map((x) => round(x)), f.k && f.k.map((x) => round(x))]),
+    // sv: what the cache saved; tc, te: tool calls and failed ones; ot: owner turns the fact's requests answered first.
+    facts: rows.facts.map((f) => [f.s, f.d, f.h, f.m, f.sub, ei(f.e), f.q, f.i, f.o, f.cr, f.cw, f.th, f.c, f.rb && f.rb.map((x) => round(x)), f.k && f.k.map((x) => round(x)), round(f.sv), f.tc, f.te, f.ot]),
     subagents: rows.subagents.map((a) => ({ ...a, type: types.indexOf(a.type) })),
     tools: rows.tools.map(shortToolNames),
     skills: rows.skills, skillSources: rows.skillSources,

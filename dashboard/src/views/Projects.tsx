@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { byDay, slotsOf, totals, type Fact, type Model, type Session } from "../model.ts";
 import { squarify } from "../treemap.ts";
-import { Columns, Legend, MetricSeg, Swatch, tip } from "../ui.tsx";
+import { Columns, Legend, Mag, MetricSeg, Swatch, tip } from "../ui.tsx";
 
 const at = (s: Session) => s.day + String(s.hour).padStart(2, "0") + String(s.min).padStart(2, "0");
 
@@ -54,6 +54,9 @@ export function Projects({ F, list }: { F: Fact[]; list: string[] }) {
       <button onClick={() => sortBy(k)}>{label}{order.k === k ? (order.dir > 0 ? "\u00a0↑" : "\u00a0↓") : ""}</button>
     </th>
   );
+  // Sessions and cost carry a bar against the largest project; the ratios do not, since they do not add up.
+  const most = { sess: Math.max(0, ...rows.map((r) => r.n)), cost: Math.max(0, ...rows.map((r) => r.tt.c)) };
+  const bar = (c: Col, r: Sum) => (c.k === "sess" || c.k === "cost" ? <Mag v={c.get(r) as number} max={most[c.k]}>{cell(c, r)}</Mag> : cell(c, r));
   const cell = (c: Col, r: Sum) => {
     if (c.k === "last") return r.last ? f.startText(r.last) : "—";
     const v = c.get(r) as number;
@@ -73,7 +76,7 @@ export function Projects({ F, list }: { F: Fact[]; list: string[] }) {
             {rows.length ? rows.map((r) => (
               <tr key={r.p} className="go" onClick={() => open(r.p)}>
                 <th className="name"><Swatch c={M.pColor(r.p)} /><button className="rowlink" onClick={(e) => { e.stopPropagation(); open(r.p); }}>{M.projects[r.p]}</button></th>
-                {columns.map((c) => <td key={c.k} className={c.cls}>{cell(c, r)}</td>)}
+                {columns.map((c) => <td key={c.k} className={c.cls}>{bar(c, r)}</td>)}
               </tr>
             )) : <tr><td colSpan={columns.length + 1} className="empty">{t("nodata")}</td></tr>}
           </tbody>

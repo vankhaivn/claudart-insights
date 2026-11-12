@@ -1,5 +1,5 @@
 // Pieces the views share: charts, ranked bars, the hour heatmap, mixes, cost cells and the notes on cost.
-import type { CSSProperties, ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { usePopover } from "./controls/popover.tsx";
 import { useDash } from "./dash.ts";
 import type { Fact, Metric, Run, SessionRow } from "./model.ts";
@@ -31,10 +31,13 @@ export const Empty = () => { const { t } = useDash(); return <div className="emp
 export const Swatch = ({ c }: { c: string }) => <i className={c} style={{ display: "inline-block", width: 9, height: 9, borderRadius: 3, marginRight: 8 }} />;
 
 export function Spark({ values }: { values: number[] }) {
+  const id = useId();
   if (values.length < 2) return null;
   const max = Math.max(...values, 1), n = values.length, pts = values.map((v, i) => `${(i / (n - 1 || 1)) * 72},${22 - (v / max) * 20}`);
   return (
     <svg className="spark" viewBox="0 0 72 24" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" className="g0" /><stop offset="1" className="g1" /></linearGradient></defs>
+      <polygon points={`0,24 ${pts.join(" ")} 72,24`} fill={`url(#${id})`} />
       <polyline points={pts.join(" ")} />
       <circle cx="72" cy={22 - (values[n - 1] / max) * 20} r="3" />
     </svg>
@@ -47,7 +50,9 @@ function niceTop(max: number) {
 }
 
 // Stacked columns per day, or per hour when list holds hours; with share, each column is the groups' split of 100%.
-// fmt replaces the metric's format; extra adds tooltip rows for a column.
+// Thirty days or more of totals draw as stacked areas instead, each day still a column to hover; a share keeps its
+// columns, since a day without use has no split to draw. fmt replaces the metric's
+// format; extra adds tooltip rows for a column.
 export function Columns({ list, rows, groups, metric, share = false, fmt, extra }: { list: (string | number)[]; rows: number[][]; groups: Group[]; metric: Metric; share?: boolean; fmt?: (v: number) => string; extra?: (i: number) => TipRow[] }) {
   const { f } = useDash();
   const show = fmt ?? ((v: number) => f.fmt(metric, v));
@@ -57,19 +62,30 @@ export function Columns({ list, rows, groups, metric, share = false, fmt, extra 
   const h = (i: number, k: number) => (share ? rows[i][k] / (rows[i].reduce((a, b) => a + b, 0) || 1) : rows[i][k]);
   for (let v = 0; v <= top + 1e-9; v += step) ticks.push(v);
   const hourly = typeof list[0] === "number", every = hourly ? 3 : Math.ceil(list.length / 15);
+  const area = !hourly && !share && list.length >= 30, n = list.length;
+  // Each group's band, from the groups below it to its own top, in percent of the plot; the first group is the lowest.
+  const cum = list.map((_, i) => { let s = 0; return [0, ...groups.map((_, k) => (s += h(i, k)))]; });
+  const px = (i: number) => ((i + 0.5) / n) * 100, py = (v: number) => 100 - (v / top) * 100;
+  const band = (k: number) => [...list.map((_, i) => `${px(i)}% ${py(cum[i][k + 1])}%`), ...list.map((_, i) => `${px(n - 1 - i)}% ${py(cum[n - 1 - i][k])}%`)].join(",");
   return (
     <>
       <div className="chart">
         <div className="axis">{ticks.map((v) => <span key={v} style={{ bottom: `${(v / top) * 100}%` }}>{v ? (share ? f.pct(v) : show(v)) : "0"}</span>)}</div>
-        <div className="plot">
+        <div className={area ? "plot area" : "plot"}>
           {ticks.slice(1).map((v) => <div key={v} className="gl" style={{ bottom: `${(v / top) * 100}%` }} />)}
+          {area ? (
+            <div className="bands" aria-hidden="true">
+              {groups.map((g, k) => <i key={k} className={g.c} style={{ clipPath: `polygon(${band(k)})` }} />)}
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none">{groups.map((_, k) => <polyline key={k} points={list.map((_, i) => `${px(i)},${py(cum[i][k + 1])}`).join(" ")} />)}</svg>
+            </div>
+          ) : null}
           {list.map((d, i) => {
             const sum = rows[i].reduce((a, b) => a + b, 0), dn = hourly ? (d as number) : Number((d as string).slice(8));
             const month = !hourly && (i === 0 || dn === 1) ? <em>{f.month(d as string)}</em> : null;
             const head = (hourly ? d + ":00" : f.dshort(d as string)) + " · " + show(sum);
             return (
               <div key={d} className="col" tabIndex={0} data-tip={tip(head, [...groups.map((g, k): TipRow => [g.c, g.n, (share ? f.pct(h(i, k)) + " · " : "") + show(rows[i][k])]).filter((_, k) => rows[i][k]), ...(extra?.(i) ?? [])])}>
-                <div className="bars">{groups.map((g, k) => (rows[i][k] ? <i key={k} className={g.c} style={{ height: `${(h(i, k) / top) * 100}%` }} /> : null)).reverse()}</div>
+                {area ? null : <div className="bars">{groups.map((g, k) => (rows[i][k] ? <i key={k} className={g.c} style={{ height: `${(h(i, k) / top) * 100}%` }} /> : null)).reverse()}</div>}
                 {i % every === 0 || month ? <span className="x">{dn}{month}</span> : null}
               </div>
             );
@@ -115,9 +131,11 @@ export function MetricSeg() {
   );
 }
 
-export type RankRow = { n: string; v: number; c?: string; x?: string; onClick?: () => void };
-export function Rank({ rows, metric, color }: { rows: RankRow[]; metric: Metric; color?: boolean }) {
+// x replaces the share shown after the value; tip goes on the bar. fmt replaces the metric's format.
+export type RankRow = { n: string; v: number; c?: string; x?: string; tip?: string; onClick?: () => void };
+export function Rank({ rows, metric, color, fmt }: { rows: RankRow[]; metric: Metric; color?: boolean; fmt?: (v: number) => string }) {
   const { f } = useDash();
+  const show = fmt ?? ((v: number) => f.fmt(metric, v));
   const max = Math.max(...rows.map((r) => r.v), 1), sum = rows.reduce((n, r) => n + r.v, 0) || 1;
   return (
     <div className="rank">
@@ -125,8 +143,8 @@ export function Rank({ rows, metric, color }: { rows: RankRow[]; metric: Metric;
         const name = <>{r.c ? <i className={r.c} /> : null}{r.n}</>;
         return [
           r.onClick ? <button key={`n${k}`} className="n" onClick={r.onClick}>{name}</button> : <span key={`n${k}`} className="n">{name}</span>,
-          <span key={`t${k}`} className="t"><span className={`b ${color && r.c ? r.c : ""}`} style={{ display: "block", width: `${(r.v / max) * 100}%` }} /></span>,
-          <span key={`v${k}`} className="val">{f.fmt(metric, r.v)}<small>{r.x ?? f.pct(r.v / sum)}</small></span>,
+          <span key={`t${k}`} className="t" data-tip={r.tip}><span className={`b ${color && r.c ? r.c : ""}`} style={{ display: "block", width: `${(r.v / max) * 100}%` }} /></span>,
+          <span key={`v${k}`} className="val">{show(r.v)}{r.x === "" ? null : <small>{r.x ?? f.pct(r.v / sum)}</small>}</span>,
         ];
       })}
     </div>
@@ -227,6 +245,11 @@ export function useCostFlags(F: Fact[]): TipRow[] {
 }
 
 export const heatStyle = m;
+
+// A table figure with a thin bar under it, as long as the figure against the largest in its column.
+export const Mag = ({ v, max, children }: { v: number; max: number; children: ReactNode }) => (
+  <span className="mag" style={{ "--w": max > 0 ? Math.max(0, v) / max : 0 } as CSSProperties}>{children}</span>
+);
 
 // A small (i) beside a card title that opens a short note on how to read the card; closes like the filter popovers.
 export function Info({ label, children }: { label: string; children: ReactNode }) {

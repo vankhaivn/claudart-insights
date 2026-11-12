@@ -34,6 +34,7 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
         {tile(t("costList"), <>{f.usd(now.c)}{flags.length ? <sup className="flag" tabIndex={0} data-tip={tip(t("costNotes"), flags)}>*</sup> : null}</>, delta(now.c, prev?.c, "none"), daily((x) => x.reduce((n, y) => n + y.c, 0)))}
         {tile(t("sess"), f.int(now.n), delta(now.n, prev?.n, "none"), daily((x) => new Set(x.map((y) => y.s)).size))}
         {tile(t("cache"), f.pct(now.hit), delta(now.hit, prev?.hit, "up", true), daily((x) => totals(M, x).hit))}
+        {tile(t("saved"), <span tabIndex={0} data-tip={tip(t("savedTip"), [])}>{f.usd(now.sv)}</span>, delta(now.sv, prev?.sv, "none"), daily((x) => x.reduce((n, y) => n + y.sv, 0)))}
         {tile(t("speed"), <>{f.int(now.tps)} <small>{t("tps")}</small></>, delta(now.tps, prev?.tps, "up"), daily((x) => totals(M, x).tps))}
       </div>
       <div className="grid two">

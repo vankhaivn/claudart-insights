@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { loadConfig } from "../src/config.mjs";
 import { buildUsageRows } from "../src/dashboard.mjs";
+import { cacheSaving } from "../src/prices.mjs";
 import { assistant, cost, sid, user, writeTranscript } from "./fixtures/build.mjs";
 import { makeHome } from "./fixtures/home.mjs";
 
@@ -83,4 +84,12 @@ test("the check flags a host figure off the table and stays quiet for one on it;
     assert.equal(r.code, 1, cmd);
     assert.match(r.stderr, /prices\.md:5: expected a model id, a YYYY-MM-DD date and five prices/, cmd);
   }
+});
+
+test("the cache saved its reads priced as input, less its writes beyond input", () => {
+  // Input 5, cache read 0.5, 5m write 6.25, 1h write 10 per million tokens.
+  const p = [5, 25, 0.5, 6.25, 10];
+  assert.equal(cacheSaving(p, { cache_read: 1e6, cache_write: 2e5, cache_write_1h: 1e5 }), 4.5 - 0.125 - 0.5);
+  // Without the 5m/1h split, a write counts as 1h, as requestCost prices it.
+  assert.equal(cacheSaving(p, { cache_read: 0, cache_write: 1e6 }), -5);
 });

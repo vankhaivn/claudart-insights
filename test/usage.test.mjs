@@ -102,6 +102,16 @@ test("the dashboard rows give the usage totals", () => {
   assert.ok(Math.abs(inWindow.reduce((n, f) => n + f[12], 0) - all.c) < 1e-9);
 });
 
+test("each tool call counts on the request that made it, and each owner message on the request that answered it", () => {
+  const { home } = usageHome();
+  const data = buildUsageRows(loadConfig(home.config));
+  const sum = (j, keep = () => true) => data.facts.filter(keep).reduce((n, f) => n + f[j], 0);
+  // [tool calls, failed, owner turns] at 15+1..3: Bash failed on a1 after the first owner message, Agent on a2.
+  assert.deepEqual([16, 17, 18].map((j) => sum(j)), [2, 1, 3]);
+  const opusFirstHour = (f) => f[1] === "2026-11-01" && f[4] === 0 && f[6] === 1 && f[8] === 100;
+  assert.deepEqual([16, 17, 18].map((j) => sum(j, opusFirstHour)), [1, 1, 1]);
+});
+
 test("a cost with no request is split by the host's tokens, and web search is what a model cost beyond its tokens", () => {
   const home = makeHome();
   writeFileSync(join(home.dir, "prices.md"), ["| model | from | input | output | cache read | cache write 5m | cache write 1h |", "| --- | --- | --- | --- | --- | --- | --- |",
