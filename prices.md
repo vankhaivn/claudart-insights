@@ -9,3 +9,4 @@ When `scan` reports that a model misses this table, run `node bin/insights.mjs p
 | claude-opus-5-5 | 2026-10-01 | 4 | 20 | 0.20 | 5 | 8 |
 | claude-sonnet-5-5 | 2026-10-01 | 2 | 10 | 0.10 | 2.50 | 4 |
 | claude-haiku-5-5 | 2026-10-01 | 0.10 | 0.50 | 0.01 | 0.125 | 0.20 |
+| claude-fable-5-2 | 2026-11-01 | 8 | 40 | 0.20 | 10 | 16 |
