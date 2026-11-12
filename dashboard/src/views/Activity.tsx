@@ -1,17 +1,18 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { dayAdd, rebuilds, skillUses, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
-import { ChartSeg, Columns, Delta, Empty, Info, Kpi, tip } from "../ui.tsx";
+import { ChartSeg, Columns, Delta, Empty, Heat, HeatSeg, Info, Kpi, tip } from "../ui.tsx";
 
 // What the agent did: time on the model and on tools, owner turns, lines and compactions against the window
-// before; working time per day beside lines per day; tool calls with their failed part beside the skills used.
+// before; working time per day beside the hours of the week it fell in; lines per day; where the cache was rebuilt;
+// tool calls with their failed part beside the skills used.
 const work = (M: Model, F: Fact[]) => {
   const ids = [...new Set(F.map((x) => x.s))], ss = ids.map((s) => M.sessions[s]), add = (k: (s: Session) => number) => ss.reduce((n, s) => n + k(s), 0);
   return { ids, ss, api: add((s) => s.api), tool: add((s) => s.tool), idle: add((s) => Math.max(0, s.dur * 60 - s.api - s.tool)), owner: add((s) => s.owner), compact: add((s) => s.compact), la: add((s) => s.la), lr: add((s) => s.lr) };
 };
 
 export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
-  const { M, filter, t, f } = useDash();
+  const { M, S, filter, t, f } = useDash();
   const w = work(M, F), pf = dayAdd(filter.from, -list.length);
   const p = pf >= M.first ? work(M, slice(M, filter, pf, dayAdd(filter.from, -1))) : null;
   if (!w.ss.length) return <section className="card"><Empty /></section>;
@@ -45,12 +46,13 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
           <Columns list={slots} rows={slots.map((_, i) => [api[i], tool[i]])} groups={[{ n: t("api"), c: "c1" }, { n: t("tool"), c: "c3" }]} metric="out" fmt={hours}
             extra={(i) => (idle[i] ? [["c0", t("idle"), hours(idle[i])]] : [])} />
         </section>
-        <section className="card">
-          <header><h2>{t("lines")}</h2><ChartSeg /></header>
-          <ul className="legend"><li><i className="c1" />{t("added")}<b>{f.cmp(w.la)}</b></li><li><i className="c4" />{t("removed")}<b>{f.cmp(w.lr)}</b></li></ul>
-          <Columns list={slots} rows={slots.map((_, i) => [la[i], lr[i]])} groups={[{ n: t("added"), c: "c1" }, { n: t("removed"), c: "c4" }]} metric="out" fmt={(v) => f.cmp(v)} />
-        </section>
+        <section className="card"><header><h2>{t("hours")}</h2><HeatSeg /></header><Heat F={F} by={S.heat} /></section>
       </div>
+      <section className="card">
+        <header><h2>{t("lines")}</h2><ChartSeg /></header>
+        <ul className="legend"><li><i className="c1" />{t("added")}<b>{f.cmp(w.la)}</b></li><li><i className="c4" />{t("removed")}<b>{f.cmp(w.lr)}</b></li></ul>
+        <Columns list={slots} rows={slots.map((_, i) => [la[i], lr[i]])} groups={[{ n: t("added"), c: "c1" }, { n: t("removed"), c: "c4" }]} metric="out" fmt={(v) => f.cmp(v)} />
+      </section>
       <Rebuilds F={F} />
       <div className="grid half">
       <section className="card">

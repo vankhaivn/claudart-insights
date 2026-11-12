@@ -39,7 +39,7 @@ One tile per repository, sized by cost.
 
 ### Models and subagents
 
-How the work splits between models and between the agents a session delegates to, and how each model works: output and thinking per request, requests per owner turn, tool calls and the share that failed, and output speed.
+How each model works (output and thinking per request, requests per owner turn, tool calls and the share that failed, output speed) and what each effort level costs; then how much of the work the agents a session delegates to did, and on which models.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/models-dark.png">

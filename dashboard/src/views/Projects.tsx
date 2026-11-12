@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
-import { byDay, slotsOf, totals, type Fact, type Model, type Session } from "../model.ts";
+import { totals, type Fact, type Model, type Session } from "../model.ts";
 import { squarify } from "../treemap.ts";
-import { ChartSeg, Columns, Legend, Mag, MetricSeg, Swatch, tip } from "../ui.tsx";
+import { Mag, MetricSeg, Swatch, tip } from "../ui.tsx";
 
 const at = (s: Session) => s.day + String(s.hour).padStart(2, "0") + String(s.min).padStart(2, "0");
 
@@ -16,21 +16,16 @@ function sum(M: Model, F: Fact[]) {
 type Sum = ReturnType<typeof sum>;
 const ratio = (a: number, b: number) => (b ? a / b : NaN);
 
-// Projects side by side: the share each takes of the chosen metric, how they compare, and when they were used.
+// Projects side by side: the share each takes of the chosen metric and how they compare.
 // The project filter does not hide the others here; picking a project opens it in the overview.
-export function Projects({ F, list }: { F: Fact[]; list: string[] }) {
-  const { M, S, t, f, set } = useDash();
+export function Projects({ F }: { F: Fact[] }) {
+  const { M, t, f, set } = useDash();
   const [order, setOrder] = useState<{ k: string; dir: 1 | -1 }>({ k: "cost", dir: -1 });
   const open = (p: number) => set({ view: "overview", project: M.projects[p] });
 
   const by = new Map<number, Fact[]>();
   for (const x of F) { const p = M.sessions[x.s].p; by.set(p, [...(by.get(p) ?? []), x]); }
   const rows = [...by].map(([p, pf]) => ({ p, ...sum(M, pf) })), all = sum(M, F);
-
-  const shown = M.projectRank.slice(0, 5), groups = [...shown.map((p) => ({ n: M.projects[p], c: M.pColor(p) })), { n: t("other"), c: "c0" }];
-  const slots = slotsOf(list), hourly = slots !== list;
-  const cols = byDay(F, slots, (x) => { const k = shown.indexOf(M.sessions[x.s].p); return k < 0 ? 5 : k; }, groups, S.metric);
-  const sums = groups.map((_, k) => cols.reduce((n, r) => n + r[k], 0));
 
   type Col = { k: string; label: string; cls: string; get: (r: Sum & { p?: number }) => number | string; show: (v: number) => ReactNode };
   const columns: Col[] = [
@@ -82,11 +77,6 @@ export function Projects({ F, list }: { F: Fact[]; list: string[] }) {
           </tbody>
           {rows.length > 1 ? <tfoot><tr><th>{t("allProj")}</th>{columns.map((c) => <td key={c.k} className={c.cls}>{cell(c, all)}</td>)}</tr></tfoot> : null}
         </table></div>
-      </section>
-      <section className="card">
-        <header><h2>{t("byProject")} · {(hourly ? t("perHour") : t("perDay")).toLowerCase()}</h2><div className="segs"><span className="hint">{t(S.metric)}</span><ChartSeg /></div></header>
-        <Legend groups={groups} sums={sums} metric={S.metric} />
-        <Columns list={slots} rows={cols} groups={groups} metric={S.metric} />
       </section>
     </div>
   );
