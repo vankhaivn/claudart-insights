@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { byDay, slotsOf, totals, type Fact, type Model, type Session } from "../model.ts";
 import { squarify } from "../treemap.ts";
-import { Columns, Legend, Mag, MetricSeg, Swatch, tip } from "../ui.tsx";
+import { ChartSeg, Columns, Legend, Mag, MetricSeg, Swatch, tip } from "../ui.tsx";
 
 const at = (s: Session) => s.day + String(s.hour).padStart(2, "0") + String(s.min).padStart(2, "0");
 
@@ -84,7 +84,7 @@ export function Projects({ F, list }: { F: Fact[]; list: string[] }) {
         </table></div>
       </section>
       <section className="card">
-        <header><h2>{t("byProject")} · {(hourly ? t("perHour") : t("perDay")).toLowerCase()}</h2><span className="hint">{t(S.metric)}</span></header>
+        <header><h2>{t("byProject")} · {(hourly ? t("perHour") : t("perDay")).toLowerCase()}</h2><div className="segs"><span className="hint">{t(S.metric)}</span><ChartSeg /></div></header>
         <Legend groups={groups} sums={sums} metric={S.metric} />
         <Columns list={slots} rows={cols} groups={groups} metric={S.metric} />
       </section>

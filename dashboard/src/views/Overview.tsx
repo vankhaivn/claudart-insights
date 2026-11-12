@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { byDay, byDayKinds, costParts, dayAdd, group, sessionRows, slice, slotsOf, totals, type Fact } from "../model.ts";
 import { Disclosure } from "../controls/Disclosure.tsx";
-import { Columns, CostCell, Delta, Empty, Heat, HeatSeg, Kpi, Legend, MetricSeg, Rank, SessionMix, SplitSeg, Title, tip, useCostFlags, useCostKinds, type Side } from "../ui.tsx";
+import { ChartSeg, Columns, CostCell, Delta, Empty, Heat, HeatSeg, Kpi, Legend, MetricSeg, Rank, SessionMix, SplitSeg, Title, tip, useCostFlags, useCostKinds, type Side } from "../ui.tsx";
 
 export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
   const { M, S, filter, t, f, set } = useDash();
@@ -39,7 +39,7 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
       </div>
       <div className="grid two">
         <section className="card">
-          <header><h2>{hourly ? t("perHour") : t("perDay")}</h2><div className="segs">{metric === "cost" ? <SplitSeg /> : null}<MetricSeg /></div></header>
+          <header><h2>{hourly ? t("perHour") : t("perDay")}</h2><div className="segs"><ChartSeg />{metric === "cost" ? <SplitSeg /> : null}<MetricSeg /></div></header>
           <Legend groups={groups} sums={sums} metric={metric} />
           <Columns list={slots} rows={rows} groups={groups} metric={metric} />
           <Disclosure label={hourly ? t("hourlyTable") : t("dailyTable")}>

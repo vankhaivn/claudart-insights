@@ -17,11 +17,12 @@ export type UrlState = {
   metric: "out" | "cost" | "sess";
   split: "model" | "kind"; // how a cost chart splits its columns
   heat: "req" | "out"; // what the hour heatmap counts
+  chart: "bar" | "area"; // how per-day and per-hour charts draw their totals
   sort: SortKey; dir: 1 | -1;
   q: string;
 };
 
-export const DEFAULTS: UrlState = { view: "overview", range: "14", from: "", to: "", project: "", model: "", effort: "", metric: "out", split: "model", heat: "req", sort: "start", dir: -1, q: "" };
+export const DEFAULTS: UrlState = { view: "overview", range: "14", from: "", to: "", project: "", model: "", effort: "", metric: "out", split: "model", heat: "req", chart: "bar", sort: "start", dir: -1, q: "" };
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const oneOf = <T extends string>(list: readonly T[], v: string | null, fallback: T): T => (list.includes(v as T) ? (v as T) : fallback);
@@ -38,6 +39,7 @@ export function parseUrl(pathname: string, search: string, extraViews: readonly 
     metric: oneOf(["out", "cost", "sess"] as const, p.get("metric"), "out"),
     split: oneOf(["model", "kind"] as const, p.get("split"), "model"),
     heat: oneOf(["req", "out"] as const, p.get("heat"), "req"),
+    chart: oneOf(["bar", "area"] as const, p.get("chart"), "bar"),
     sort: oneOf(SORTS, p.get("sort"), DEFAULTS.sort),
     dir: p.get("dir") === "asc" ? 1 : -1,
     q: p.get("q") ?? "",
@@ -51,6 +53,7 @@ export function toUrl(s: UrlState): string {
   if (s.metric !== DEFAULTS.metric) p.set("metric", s.metric);
   if (s.split !== DEFAULTS.split) p.set("split", s.split);
   if (s.heat !== DEFAULTS.heat) p.set("heat", s.heat);
+  if (s.chart !== DEFAULTS.chart) p.set("chart", s.chart);
   if (s.sort !== DEFAULTS.sort) p.set("sort", s.sort);
   if (s.dir === 1) p.set("dir", "asc");
   const query = p.toString();

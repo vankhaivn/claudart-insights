@@ -35,3 +35,11 @@ test("a view a host package adds is routed like a built-in one, and only when it
   const u = new URL(toUrl({ ...DEFAULTS, view: "notes", project: "alpha" }), "http://x");
   assert.deepEqual([parseUrl(u.pathname, u.search, ["notes"]).view, parseUrl(u.pathname, u.search, ["notes"]).project], ["notes", "alpha"]);
 });
+
+test("the chart form is kept in the address, columns by default", () => {
+  assert.equal(parseUrl("/", "").chart, "bar");
+  assert.equal(parseUrl("/", "chart=area").chart, "area");
+  assert.equal(parseUrl("/", "chart=pie").chart, "bar");
+  assert.equal(toUrl({ ...DEFAULTS, chart: "area" }), "/?chart=area");
+  assert.equal(toUrl(DEFAULTS), "/");
+});

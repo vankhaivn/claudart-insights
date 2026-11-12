@@ -346,3 +346,6 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 .panel h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--ink2); }
 @media (max-width: 1060px) { .panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .panels { grid-template-columns: minmax(0, 1fr); } }
+.chartseg button { display: inline-flex; align-items: center; }
+.chartseg svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.card > header .segs { align-items: center; }

@@ -50,11 +50,10 @@ function niceTop(max: number) {
 }
 
 // Stacked columns per day, or per hour when list holds hours; with share, each column is the groups' split of 100%.
-// Thirty days or more of totals draw as stacked areas instead, each day still a column to hover; a share keeps its
-// columns, since a day without use has no split to draw. fmt replaces the metric's
-// format; extra adds tooltip rows for a column.
+// Totals draw as stacked areas when the chart toggle says so, each slot still a column to hover; a share keeps its
+// columns, since a day without use has no split to draw. fmt replaces the metric's format; extra adds tooltip rows for a column.
 export function Columns({ list, rows, groups, metric, share = false, fmt, extra }: { list: (string | number)[]; rows: number[][]; groups: Group[]; metric: Metric; share?: boolean; fmt?: (v: number) => string; extra?: (i: number) => TipRow[] }) {
-  const { f } = useDash();
+  const { f, S } = useDash();
   const show = fmt ?? ((v: number) => f.fmt(metric, v));
   const max = Math.max(...rows.map((r) => r.reduce((a, b) => a + b, 0)), 0);
   if (!max) return <Empty />;
@@ -62,7 +61,7 @@ export function Columns({ list, rows, groups, metric, share = false, fmt, extra 
   const h = (i: number, k: number) => (share ? rows[i][k] / (rows[i].reduce((a, b) => a + b, 0) || 1) : rows[i][k]);
   for (let v = 0; v <= top + 1e-9; v += step) ticks.push(v);
   const hourly = typeof list[0] === "number", every = hourly ? 3 : Math.ceil(list.length / 15);
-  const area = !hourly && !share && list.length >= 30, n = list.length;
+  const area = S.chart === "area" && !share && list.length > 1, n = list.length;
   // Each group's band, from the groups below it to its own top, in percent of the plot; the first group is the lowest.
   const cum = list.map((_, i) => { let s = 0; return [0, ...groups.map((_, k) => (s += h(i, k)))]; });
   const px = (i: number) => ((i + 0.5) / n) * 100, py = (v: number) => 100 - (v / top) * 100;
@@ -118,6 +117,21 @@ export function SplitSeg() {
   return (
     <div className="seg" role="group">
       {(["model", "kind"] as const).map((k) => <button key={k} aria-pressed={S.split === k} onClick={() => set({ split: k })}>{t(k === "model" ? "splitModel" : "splitKind")}</button>)}
+    </div>
+  );
+}
+
+// How per-day and per-hour charts draw their totals: stacked columns or stacked areas, for every chart at once.
+export function ChartSeg() {
+  const { S, t, set } = useDash();
+  const icon = { bar: <path d="M3 13V8M8 13V3M13 13V6" />, area: <path d="M2 13L5.5 7l3 3L14 4v9z" /> };
+  return (
+    <div className="seg chartseg" role="group">
+      {(["bar", "area"] as const).map((k) => (
+        <button key={k} aria-pressed={S.chart === k} aria-label={t(k === "bar" ? "bars" : "areas")} data-tip={tip(t(k === "bar" ? "bars" : "areas"), [])} onClick={() => set({ chart: k })}>
+          <svg viewBox="0 0 16 16" aria-hidden="true">{icon[k]}</svg>
+        </button>
+      ))}
     </div>
   );
 }

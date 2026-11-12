@@ -1,7 +1,7 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { useDash } from "../dash.ts";
 import { dayAdd, rebuilds, skillUses, slice, slotsOf, toolCalls, type Fact, type Model, type Session } from "../model.ts";
-import { Columns, Delta, Empty, Info, Kpi, tip } from "../ui.tsx";
+import { ChartSeg, Columns, Delta, Empty, Info, Kpi, tip } from "../ui.tsx";
 
 // What the agent did: time on the model and on tools, owner turns, lines and compactions against the window
 // before; working time per day beside lines per day; tool calls with their failed part beside the skills used.
@@ -40,13 +40,13 @@ export function Activity({ F, list }: { F: Fact[]; list: string[] }) {
       </div>
       <div className="grid half">
         <section className="card">
-          <header><h2>{t("time")}</h2><span className="hint">{t("idle")}: {f.dur(w.idle / 60)}</span></header>
+          <header><h2>{t("time")}</h2><div className="segs"><span className="hint">{t("idle")}: {f.dur(w.idle / 60)}</span><ChartSeg /></div></header>
           <ul className="legend"><li><i className="c1" />{t("api")}<b>{f.dur(w.api / 60)}</b></li><li><i className="c3" />{t("tool")}<b>{f.dur(w.tool / 60)}</b></li></ul>
           <Columns list={slots} rows={slots.map((_, i) => [api[i], tool[i]])} groups={[{ n: t("api"), c: "c1" }, { n: t("tool"), c: "c3" }]} metric="out" fmt={hours}
             extra={(i) => (idle[i] ? [["c0", t("idle"), hours(idle[i])]] : [])} />
         </section>
         <section className="card">
-          <header><h2>{t("lines")}</h2></header>
+          <header><h2>{t("lines")}</h2><ChartSeg /></header>
           <ul className="legend"><li><i className="c1" />{t("added")}<b>{f.cmp(w.la)}</b></li><li><i className="c4" />{t("removed")}<b>{f.cmp(w.lr)}</b></li></ul>
           <Columns list={slots} rows={slots.map((_, i) => [la[i], lr[i]])} groups={[{ n: t("added"), c: "c1" }, { n: t("removed"), c: "c4" }]} metric="out" fmt={(v) => f.cmp(v)} />
         </section>
