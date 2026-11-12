@@ -7,7 +7,8 @@ A local dashboard and CLI that reads the AI coding agent transcripts on this mac
 | Command | What it does |
 | --- | --- |
 | `make` | List the targets |
-| `make start` / `make dev` | Build and serve the dashboard at http://localhost:4310 / the same with hot reload |
+| `make start` / `make stop` | Build and serve the dashboard at http://localhost:4310 in the background (`data/serve.pid`, `data/serve.log`) / stop it |
+| `make dev` | Serve the dashboard with hot reload, in the foreground |
 | `make demo` | Serve made-up data at http://localhost:4311 |
 | `make screenshots` | Retake the README screenshots, light and dark, from the `make demo` data with headless Google Chrome (`CHROME` points at another binary) |
 | `make scan`, `make usage DAYS=30 BY=model`, `make prices` | The CLI (`node bin/insights.mjs <command>`) |

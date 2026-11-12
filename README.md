@@ -65,7 +65,7 @@ cd claudart-insights
 make start
 ```
 
-Open <http://localhost:4310>. The first visit scans your transcripts into `data/`; the refresh button at the foot of the sidebar scans again. Without `make`, run `npm install` then `npm start`.
+`make start` returns once the server is up and leaves it running in the background; `make stop` ends it. Open <http://localhost:4310>. The first visit scans your transcripts into `data/`; the refresh button at the foot of the sidebar scans again. Without `make`, run `npm install` then `npm start`, which serves in the foreground until Ctrl+C.
 
 To look around before pointing it at your own data, `make demo` serves ten weeks of made-up use at <http://localhost:4311>.
 
@@ -73,8 +73,9 @@ To look around before pointing it at your own data, `make demo` serves ten weeks
 
 | `make` target | CLI equivalent | What it does |
 | --- | --- | --- |
-| `make start` | `npm start` | Build and serve the dashboard |
-| `make dev` | `npm run dev` | The same with hot reload |
+| `make start` | `npm start` | Build the dashboard and serve it in the background; its output goes to `data/serve.log` |
+| `make stop` | | Stop the dashboard `make start` runs |
+| `make dev` | `npm run dev` | Serve the dashboard with hot reload, in the foreground |
 | `make demo` | `node test/fixtures/demo.mjs` | Serve made-up data on port 4311 |
 | `make scan` | `node bin/insights.mjs scan` | Archive new transcript lines and read them in |
 | `make usage DAYS=30 BY=model` | `node bin/insights.mjs usage --days 30 --by model` | Tokens and cost in the terminal; `ARGS="..."` adds any other option |
