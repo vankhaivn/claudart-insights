@@ -1,6 +1,6 @@
 import { useDash } from "../dash.ts";
-import { byDay, sessionRows, slotsOf, type Fact } from "../model.ts";
-import { Columns, CostCell, Empty, Legend, MetricSeg, RunsStrip, Swatch, tip } from "../ui.tsx";
+import { byDay, sessionRows, slotsOf, vsHigh, type Fact } from "../model.ts";
+import { Columns, CostCell, Empty, Legend, MetricSeg, RunsStrip, Swatch, tip, type TipRow } from "../ui.tsx";
 
 // The effort story, top to bottom: what share of cost each level takes, what one request costs at each
 // level within a model, how the mix moves day by day, and which sessions changed level on the way.
@@ -20,12 +20,12 @@ export function Effort({ F, list }: { F: Fact[]; list: string[] }) {
     <div key={`b${label}`} className="split">{lv.map((e, i) => (sh[i] ? <i key={e} className={`v${e}`} style={{ width: `${sh[i] * 100}%` }} data-tip={tip(M.efforts[e], [["v" + e, label, fm(raw[i]) + " · " + f.pct(sh[i])]])}>{sh[i] >= 0.14 ? f.pct(sh[i]) : ""}</i> : null))}</div>,
   ];
   const ss = [...new Set(F.filter((x) => !x.sub).map((x) => x.s))].map((s) => M.sessions[s]), sw = ss.filter((x) => x.runs.length > 1);
-  // What effort controls: how much a request writes (thinking included) at each level, model by model, against
-  // the same model's high. Cost per request follows the context more than the effort, so it stays in the tooltip.
+  // What effort controls: how much a request writes (thinking included) at each level, model by model, and against
+  // the same model's high within the sessions that ran both, since most sessions keep one level and the levels would
+  // otherwise compare different work. Cost per request follows the context more than the effort, so it stays in the tooltip.
   const price = M.models.map((n, m) => {
     const cells = lv.map((e) => { const x = F.filter((y) => y.m === m && y.e === e); return { e, q: x.reduce((a, y) => a + y.q, 0), o: x.reduce((a, y) => a + y.o, 0), th: x.reduce((a, y) => a + y.th, 0), c: x.reduce((a, y) => a + y.c, 0) }; });
-    const high = cells.find((r) => r.e === 2 && r.q);
-    return { n, m, cells: cells.map((r) => ({ ...r, vs: high && high.o && r.q ? r.o / r.q / (high.o / high.q) : null })) };
+    return { n, m, cells: cells.map((r) => ({ ...r, vs: r.e !== 2 && r.q ? vsHigh(F, m, r.e, 2) : null })) };
   }).filter((r) => r.cells.some((x) => x.q));
   const allC = c.reduce((a, b) => a + b, 0) || 1;
   const groups = lv.map((e) => ({ n: M.efforts[e], c: "v" + e })), slots = slotsOf(list), hourly = slots !== list;
@@ -66,8 +66,8 @@ export function Effort({ F, list }: { F: Fact[]; list: string[] }) {
             <tr key={r.m}>
               <th className="name"><Swatch c={`c${r.m + 1}`} />{r.n}</th>
               {r.cells.map((x) => (x.q ? (
-                <td key={x.e} className="num" tabIndex={0} data-tip={tip(r.n + " · " + M.efforts[x.e], [["v" + x.e, t("requests"), f.int(x.q)], ["v" + x.e, t("thinking") + " " + t("perReq"), f.cmp(x.th / x.q)], ["v" + x.e, t("cost") + " " + t("perReq"), f.usd3(x.c / x.q)], ["v" + x.e, t("costShare"), f.pct(x.c / allC)]])}>
-                  <span className="name">{f.cmp(x.o / x.q)}</span><span className={`sub${x.e !== 2 && (x.vs ?? 0) >= 1.2 ? " up" : ""}`}>{x.e !== 2 && x.vs ? `${f.times(x.vs)} ${M.efforts[2]}` : "\u00a0"}</span>
+                <td key={x.e} className="num" tabIndex={0} data-tip={tip(r.n + " · " + M.efforts[x.e], [["v" + x.e, t("requests"), f.int(x.q)], ["v" + x.e, t("thinking") + " " + t("perReq"), f.cmp(x.th / x.q)], ["v" + x.e, t("cost") + " " + t("perReq"), f.usd3(x.c / x.q)], ["v" + x.e, t("costShare"), f.pct(x.c / allC)], ...(x.vs ? [["v" + x.e, `${t("vsLevel")} ${M.efforts[2]}`, x.vs.r ? `${f.times(x.vs.r)} · ${L.nBoth(x.vs.n)}` : L.fewBoth(x.vs.n)] as TipRow] : [])])}>
+                  <span className="name">{f.cmp(x.o / x.q)}</span><span className={`sub${(x.vs?.r ?? 0) >= 1.2 ? " up" : ""}`}>{x.vs?.r ? `${f.times(x.vs.r)} ${M.efforts[2]}` : "\u00a0"}</span>
                 </td>
               ) : <td key={x.e} className="num x1"><span className="name">—</span><span className="sub">{"\u00a0"}</span></td>))}
             </tr>
