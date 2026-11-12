@@ -338,8 +338,8 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 .spark .g0 { stop-color: var(--ink2); stop-opacity: .2; } .spark .g1 { stop-color: var(--ink2); stop-opacity: 0; }
 
 /* A table figure with a bar under it, against the largest in its column. */
-.mag { display: inline-block; position: relative; min-width: 56px; padding-bottom: 6px; }
-.mag::after { content: ""; position: absolute; right: 0; bottom: 0; height: 3px; width: calc(var(--w) * 56px); border-radius: 2px; background: var(--ink2); opacity: .55; }
+.magbar { display: inline-block; position: relative; min-width: 56px; padding-bottom: 6px; }
+.magbar::after { content: ""; position: absolute; right: 0; bottom: 0; height: 3px; width: calc(var(--w) * 56px); border-radius: 2px; background: var(--ink2); opacity: .55; }
 
 /* How each model works: ranked panels side by side. */
 .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 32px; }

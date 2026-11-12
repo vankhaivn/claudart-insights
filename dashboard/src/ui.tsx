@@ -262,7 +262,7 @@ export const heatStyle = m;
 
 // A table figure with a thin bar under it, as long as the figure against the largest in its column.
 export const Mag = ({ v, max, children }: { v: number; max: number; children: ReactNode }) => (
-  <span className="mag" style={{ "--w": max > 0 ? Math.max(0, v) / max : 0 } as CSSProperties}>{children}</span>
+  <span className="magbar" style={{ "--w": max > 0 ? Math.max(0, v) / max : 0 } as CSSProperties}>{children}</span>
 );
 
 // A small (i) beside a card title that opens a short note on how to read the card; closes like the filter popovers.
