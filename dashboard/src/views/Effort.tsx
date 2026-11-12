@@ -1,6 +1,6 @@
 import { useDash } from "../dash.ts";
 import { byDay, sessionRows, slotsOf, vsHigh, type Fact } from "../model.ts";
-import { Columns, CostCell, Empty, Legend, MetricSeg, RunsStrip, Swatch, tip, type TipRow } from "../ui.tsx";
+import { Columns, CostCell, Empty, Info, Legend, MetricSeg, RunsStrip, Swatch, tip, type TipRow } from "../ui.tsx";
 
 // The effort story, top to bottom: what share of cost each level takes, what one request costs at each
 // level within a model, how the mix moves day by day, and which sessions changed level on the way.
@@ -59,7 +59,7 @@ export function Effort({ F, list }: { F: Fact[]; list: string[] }) {
     <div className="stack">
       {subEff.length ? <div className="grid half">{shares}{subCard}</div> : shares}
       <section className="card">
-        <header><h2>{t("price")}</h2><span className="hint">token</span></header>
+        <header><div className="ttl"><h2>{t("price")}</h2><Info label={t("howToRead")}><p>{t("priceInfo")}</p></Info></div><span className="hint">token</span></header>
         <div className="scroll"><table className="price">
           <thead><tr><th>{t("model")}</th>{lv.map((e) => <th key={e} className="num"><span className="lv"><i className={`v${e}`} />{M.efforts[e]}</span></th>)}</tr></thead>
           <tbody>{price.map((r) => (
