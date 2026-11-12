@@ -1,4 +1,4 @@
-.PHONY: help start dev build demo scan usage prices test check
+.PHONY: help start dev build demo screenshots scan usage prices test check
 
 # make usage DAYS=30 BY=model; ARGS passes any other usage option, e.g. ARGS="--project alpha --json".
 DAYS ?= 14
@@ -6,7 +6,7 @@ BY ?=
 ARGS ?=
 
 help: ## List the targets
-	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 10
+	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 14
 
 # Packages are installed again whenever the lockfile changes.
 node_modules: package-lock.json
@@ -22,8 +22,11 @@ dev: node_modules ## Serve the dashboard with hot reload
 build: node_modules ## Build the dashboard into dashboard/dist
 	npm run build
 
-demo: build ## Serve made-up data at http://localhost:4311, for screenshots or a first look
+demo: build ## Serve made-up data at http://localhost:4311, for a first look
 	node test/fixtures/demo.mjs
+
+screenshots: build ## Retake the README images, light and dark, from the demo data (needs Google Chrome)
+	node test/fixtures/screenshots.mjs
 
 scan: ## Archive new transcript lines and read them into the database
 	node bin/insights.mjs scan

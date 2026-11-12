@@ -8,7 +8,8 @@ A local dashboard and CLI that reads the AI coding agent transcripts on this mac
 | --- | --- |
 | `make` | List the targets |
 | `make start` / `make dev` | Build and serve the dashboard at http://localhost:4310 / the same with hot reload |
-| `make demo` | Serve made-up data at http://localhost:4311; the source of the README screenshots |
+| `make demo` | Serve made-up data at http://localhost:4311 |
+| `make screenshots` | Retake the README screenshots, light and dark, from the `make demo` data with headless Google Chrome (`CHROME` points at another binary) |
 | `make scan`, `make usage DAYS=30 BY=model`, `make prices` | The CLI (`node bin/insights.mjs <command>`) |
 | `make test`, `make check`, `make build` | Tests (`node --test`), dashboard type-check, dashboard build |
 
@@ -28,7 +29,7 @@ Run `make test` and `make check` after every change; `make build` when the dashb
 | `dashboard/` | Vite + React + TypeScript app; one file per view in `dashboard/src/views/`, strings in `i18n.tsx` (English and Vietnamese) |
 | `dashboard/src/extra.ts`, `dashboard/src/index.ts` | How another app embeds the dashboard with views of its own |
 | `test/` | `node --test` suites; `test/fixtures/` builds synthetic transcripts in temp folders, `demo.mjs` the `make demo` data |
-| `docs/assets/` | Logo and README screenshots, light and dark, taken from `make demo` |
+| `docs/assets/` | Logo and README screenshots, light and dark, taken by `make screenshots` |
 
 ## Constraints
 
