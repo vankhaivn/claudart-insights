@@ -1,9 +1,12 @@
-.PHONY: help start dev build demo screenshots scan usage prices test check
+.PHONY: help start stop dev build demo screenshots scan usage prices test check
 
 # make usage DAYS=30 BY=model; ARGS passes any other usage option, e.g. ARGS="--project alpha --json".
 DAYS ?= 14
 BY ?=
 ARGS ?=
+# make start keeps the background server's process id and output here.
+PID := data/serve.pid
+LOG := data/serve.log
 
 help: ## List the targets
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 14
@@ -13,8 +16,17 @@ node_modules: package-lock.json
 	npm ci
 	@touch node_modules
 
-start: node_modules ## Build the dashboard and serve it at http://localhost:4310
-	npm start
+start: node_modules ## Build the dashboard and serve it in the background at http://localhost:4310
+	@if [ -f $(PID) ] && ps -p $$(cat $(PID)) -o command= | grep -q 'insights.mjs serve'; then echo "already running (pid $$(cat $(PID))); make stop first"; exit 1; fi
+	npm run build
+	@mkdir -p data
+	@nohup node bin/insights.mjs serve > $(LOG) 2>&1 & echo $$! > $(PID)
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do grep -q 'dashboard at' $(LOG) && break; kill -0 $$(cat $(PID)) 2>/dev/null || break; sleep 0.25; done
+	@if grep -q 'dashboard at' $(LOG); then echo "dashboard at $$(grep -o 'http://[^:]*:[0-9]*' $(LOG) | head -1) in the background (pid $$(cat $(PID)), log $(LOG)); make stop ends it"; else cat $(LOG); rm -f $(PID); exit 1; fi
+
+stop: ## Stop the dashboard that make start runs in the background
+	@if [ -f $(PID) ] && ps -p $$(cat $(PID)) -o command= | grep -q 'insights.mjs serve'; then kill $$(cat $(PID)) && echo "stopped (pid $$(cat $(PID)))"; else echo "not running"; fi
+	@rm -f $(PID)
 
 dev: node_modules ## Serve the dashboard with hot reload
 	npm run dev

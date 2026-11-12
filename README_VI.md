@@ -65,7 +65,7 @@ cd claudart-insights
 make start
 ```
 
-Mở <http://localhost:4310>. Lần mở đầu tiên quét transcript vào `data/`; nút làm mới ở chân sidebar quét lại. Máy không có `make` thì chạy `npm install` rồi `npm start`.
+`make start` trả lại terminal khi server đã chạy và để nó chạy nền; `make stop` tắt nó. Mở <http://localhost:4310>. Lần mở đầu tiên quét transcript vào `data/`; nút làm mới ở chân sidebar quét lại. Máy không có `make` thì chạy `npm install` rồi `npm start`, chạy foreground tới khi Ctrl+C.
 
 Muốn xem thử trước khi dùng dữ liệu của mình, `make demo` phục vụ mười tuần dữ liệu bịa ra tại <http://localhost:4311>.
 
@@ -73,8 +73,9 @@ Muốn xem thử trước khi dùng dữ liệu của mình, `make demo` phục 
 
 | Target `make` | Lệnh CLI tương ứng | Việc làm |
 | --- | --- | --- |
-| `make start` | `npm start` | Build và phục vụ dashboard |
-| `make dev` | `npm run dev` | Như trên, có hot reload |
+| `make start` | `npm start` | Build dashboard và phục vụ nó ở nền; output ghi vào `data/serve.log` |
+| `make stop` | | Tắt dashboard mà `make start` chạy |
+| `make dev` | `npm run dev` | Phục vụ dashboard có hot reload, ở foreground |
 | `make demo` | `node test/fixtures/demo.mjs` | Phục vụ dữ liệu bịa ra ở cổng 4311 |
 | `make scan` | `node bin/insights.mjs scan` | Lưu các dòng transcript mới và nạp vào |
 | `make usage DAYS=30 BY=model` | `node bin/insights.mjs usage --days 30 --by model` | Token và chi phí trên terminal; `ARGS="..."` thêm option khác |
