@@ -163,7 +163,7 @@ export function App({ extra }: { extra?: Extra }) {
           {/* The scan and the app's settings: below the nav on wide screens, at the end of the nav bar on narrow ones. */}
           <div className="foot">
             <div className="scan">
-              <div className="si">{scan.busy ? t("scanning") : `${t("scanned")} ${f.scanTime(M.scanned)}${scan.added?.sessions ? ` · ${L.scanNew(scan.added.sessions)}` : ""}`}</div>
+              <div className="si">{scan.busy ? t("scanning") : <>{t("scanned")} {f.scanTime(M.scanned)}{scan.added?.sessions ? <span>{L.scanNew(scan.added.sessions)}</span> : null}</>}</div>
               {refreshButton}
             </div>
             <div className="prefs">

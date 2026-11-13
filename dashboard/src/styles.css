@@ -36,8 +36,8 @@ code { font: 12.5px/1 ui-monospace, "SF Mono", Menlo, monospace; }
 .nav button[aria-current="page"] { background: var(--wash); color: var(--ink); font-weight: 600; }
 .nav svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .nav.quiet button { font-size: 13px; padding: 6px 10px; }
-.side .foot { display: grid; gap: 12px; margin-top: auto; padding: 12px 0 0; border-top: 1px solid var(--hair); color: var(--ink2); font-size: 12.5px; }
-.foot .scan { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-left: 10px; } .foot .si { color: var(--ink2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side .foot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: auto; padding: 12px 0 0; border-top: 1px solid var(--hair); color: var(--ink2); font-size: 12.5px; }
+.foot .scan { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-left: 10px; } .foot .si { min-width: 0; color: var(--ink2); font-size: 12.5px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .foot .si span { display: block; overflow: hidden; text-overflow: ellipsis; }
 .foot .scan .icon { background: none; } .foot .scan .icon:hover:not(:disabled) { background: var(--wash); }
 .foot .prefs { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .foot .icon { width: 30px; height: 30px; border-radius: 8px; color: var(--ink2); } .foot .icon:hover:not(:disabled) { color: var(--ink); }
