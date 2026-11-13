@@ -13,15 +13,16 @@ export const tip = (head: string, rows: TipRow[]) => JSON.stringify({ h: head, r
 const m = (v: string): CSSProperties => ({ "--m": v }) as CSSProperties;
 
 // "up": a rise is better (cache share, speed); "none": a volume, money included, colored neutrally either way.
-export type Side = "up" | "none";
-export const tone = (d: number, side: Side) => (!d ? "" : side === "none" ? "vol" : d > 0 ? "better" : "worse");
+// "up" and "down" say which way is better; a total that follows how much work was done takes no color.
+export type Side = "up" | "down" | "none";
+export const tone = (d: number, side: Side) => (!d ? "" : side === "none" ? "vol" : (d > 0) === (side === "up") ? "better" : "worse");
 
 // The change against the window before, in percent, or in points for a share.
-export function Delta({ a, b, side, points = false }: { a: number; b: number | undefined; side: Side; points?: boolean }) {
+export function Delta({ a, b, side, points = false, bare = false }: { a: number; b: number | undefined; side: Side; points?: boolean; bare?: boolean }) {
   const { t } = useDash();
-  if (!b) return <span>{t("noPrev")}</span>;
+  if (!b) return bare ? null : <span>{t("noPrev")}</span>;
   const d = points ? (a - b) * 100 : ((a - b) / b) * 100, shown = Math.abs(d).toFixed(points ? 1 : 0);
-  return <span><b className={tone(Number(shown) && d, side)}>{d >= 0 ? "▲" : "▼"} {shown}{points ? " pt" : "%"}</b> {t("vsPrev")}</span>;
+  return <span><b className={tone(Number(shown) && d, side)}>{d >= 0 ? "▲" : "▼"} {shown}{points ? " pt" : "%"}</b>{bare ? null : <> {t("vsPrev")}</>}</span>;
 }
 
 export const Kpi = ({ label, value, d, series }: { label: string; value: ReactNode; d: ReactNode; series: number[] }) => (

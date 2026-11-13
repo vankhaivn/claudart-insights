@@ -118,7 +118,7 @@ Claude Code records a cost per session; Insights uses that figure and spreads it
 
 Each cost is split into what it paid for: reading the context, cache writes, output and web search. Claude Code also calls models in the background, Haiku for the WebSearch tool among them, without writing those calls to the transcript; their cost is split by the tokens Claude Code recorded for that model. Web search is what a model that searched the web cost beyond its tokens priced from the table. A model without a price row stays as "Not split".
 
-What the cache saved is each request's cache reads priced as input instead, less what its cache writes cost beyond input: the bill without the prompt cache, against the bill with it.
+What the cache saved is each request's cache reads priced as input instead, less what its cache writes cost beyond input: the bill without the prompt cache, against the bill with it. That amount grows with the work done, so the Overview compares periods by a ratio under it instead: the share of cost spent reading the context, where a rise is the worse direction.
 
 Cost is list price. On a subscription it is quota spent, not money.
 

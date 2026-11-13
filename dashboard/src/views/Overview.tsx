@@ -5,10 +5,12 @@ import { Disclosure } from "../controls/Disclosure.tsx";
 import { ChartSeg, Columns, CostCell, Delta, Empty, Kpi, Legend, MetricSeg, Rank, SessionMix, SplitSeg, Title, tip, useCostFlags, useCostKinds, type Side } from "../ui.tsx";
 
 export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
-  const { M, S, filter, t, f, set } = useDash();
+  const { M, S, filter, t, L, f, set } = useDash();
   const now = totals(M, F), len = list.length, pf = dayAdd(filter.from, -len);
   const prev = pf >= M.first ? totals(M, slice(M, filter, pf, dayAdd(filter.from, -1))) : null;
   const delta = (a: number, b: number | undefined, side: Side, points = false) => <Delta a={a} b={prev ? b : undefined} side={side} points={points} />;
+  // What the cache saved follows how much work was done, so its line shows the share of cost spent reading the context instead.
+  const reread = (x: ReturnType<typeof totals>) => x.k[0] / (x.c || 1);
   const daily = (pick: (x: Fact[]) => number) => list.map((d) => pick(F.filter((x) => x.d === d)));
   const tile = (label: string, value: ReactNode, d: ReactNode, series: number[]) => <Kpi label={label} value={value} d={d} series={series} />;
   const metric = S.metric, flags = useCostFlags(F);
@@ -38,7 +40,7 @@ export function Overview({ F, list }: { F: Fact[]; list: string[] }) {
         {tile(t("costList"), <>{f.usd(now.c)}{flags.length ? <sup className="flag" tabIndex={0} data-tip={tip(t("costNotes"), flags)}>*</sup> : null}</>, delta(now.c, prev?.c, "none"), daily((x) => x.reduce((n, y) => n + y.c, 0)))}
         {tile(t("sess"), f.int(now.n), delta(now.n, prev?.n, "none"), daily((x) => new Set(x.map((y) => y.s)).size))}
         {tile(t("cache"), f.pct(now.hit), delta(now.hit, prev?.hit, "up", true), daily((x) => totals(M, x).hit))}
-        {tile(t("saved"), <span tabIndex={0} data-tip={tip(t("savedTip"), [])}>{f.usd(now.sv)}</span>, delta(now.sv, prev?.sv, "up"), daily((x) => x.reduce((n, y) => n + y.sv, 0)))}
+        {tile(t("saved"), <span tabIndex={0} data-tip={tip(t("savedTip"), [])}>{f.usd(now.sv)}</span>, <>{L.reread(f.pct(reread(now)))} <Delta a={reread(now)} b={prev ? reread(prev) || undefined : undefined} side="down" points bare /></>, daily((x) => x.reduce((n, y) => n + y.sv, 0)))}
         {tile(t("speed"), <>{f.int(now.tps)} <small>{t("tps")}</small></>, delta(now.tps, prev?.tps, "up"), daily((x) => totals(M, x).tps))}
       </div>
       <section className="card">
