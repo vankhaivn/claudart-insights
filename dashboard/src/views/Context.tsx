@@ -154,7 +154,7 @@ function Replay({ C, X }: { C: Compaction[]; X: Ctx[] }) {
     // Past the first point at which nothing compacts, the rows repeat it, save the default.
     .filter((x, i, all) => x.now || x.j === NOW - 1 || x.n > 0 || !all.slice(0, i).some((y) => y.n === 0));
   const base = shown.find((x) => x.now) ?? null, max = Math.max(1, ...shown.map((x) => x.total));
-  const kinds: [string, string][] = [["k0", t("readingCtx")], ["k1", t("compacting")], ["k2", t("rebuildIdle")]];
+  const kinds: [string, string][] = [["ck0", t("readingCtx")], ["ck1", t("compacting")], ["ck2", t("rebuildIdle")]];
   const name = (x: (typeof shown)[number]) => (x.now ? (one ? f.cmp(round5(one)) : levels.map((v) => f.cmp(round5(v))).join(" · ")) : f.cmp(x.at));
   return (
     <section className="card">
