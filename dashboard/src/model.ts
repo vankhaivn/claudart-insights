@@ -6,6 +6,8 @@
 //   tools     tool calls and errors per session
 //   skills    per session, each skill's [typed as a command, called by the agent, failed calls, last day used];
 //             skillSources says where each skill was loaded from
+//   compactions one row per compaction (see Compaction)
+//   context   per session, day, model and effort: the cost of reading the context by size and the replay (see Ctx)
 
 export type Run = [effort: number, requests: number];
 export type Session = {
@@ -23,10 +25,21 @@ export type Session = {
 export type Fact = { s: number; d: string; h: number; m: number; sub: number; e: number; q: number; i: number; o: number; cr: number; cw: number; th: number; c: number; rb: number[] | null; k: number[] | null; sv: number; tc: number; te: number; ot: number };
 export type Subagent = { s: number; type: number; m: number; parent: number; o: number };
 type RawFact = [number, string, number, number, number, number, number, number, number, number, number, number, number, number[] | null, number[] | null, number, number, number, number];
+// A compaction: auto is 1, manual 0, unknown null; pre, post and kept are tokens of context before it, of its summary and of
+// the next request; next and turns count requests and owner turns up to the next one (null for the last), tail the requests
+// after the last one; sum is what its summary request cost (null when it cannot be priced), rb the rewrite after it.
+export type Compaction = { s: number; d: string; m: number; e: number; sub: number; auto: number | null; pre: number | null; post: number | null; wait: number | null;
+  kept: number | null; nth: number; next: number | null; turns: number | null; tail: number | null; sum: number | null; rb: number };
+type RawCompaction = [number, string, number, number, number, number | null, number | null, number | null, number | null, number | null, number, number | null, number | null, number | null, number | null, number];
+// b: the cost of reading the context per size bucket (edges in Payload), then a part the host charged with no request;
+// n: requests per bucket; r: per replay point (the points, then now) compactions, reading, compacting, rebuilds after idle.
+export type Ctx = { s: number; d: string; m: number; e: number; b: number[]; n: number[]; r: number[] | null };
+type RawCtx = [number, string, number, number, number[], number[], number[] | null];
 export type Payload = {
   today: string; scanned: string; models: string[]; projects: string[]; types: string[]; efforts: string[]; transcripts: number;
   sessions: Session[]; facts: RawFact[]; subagents: Subagent[]; tools: Record<string, [number, number]>[];
   skills: Record<string, SkillUse>[]; skillSources: Record<string, SkillSource>;
+  compactions: RawCompaction[]; context: RawCtx[]; edges: number[]; points: number[]; fires: Record<number, number | null>;
 };
 export type SkillUse = [command: number, agent: number, errors: number, last: string];
 export const SKILL_SOURCES = ["project", "personal", "plugin", "builtin", "other"] as const;
@@ -49,6 +62,9 @@ export function buildModel(data: Payload) {
     levels: data.efforts.map((_, e) => e).filter((e) => facts.some((f) => f.e === e)), // levels seen, low → max
     first: facts.reduce((a, f) => (f.d < a ? f.d : a), data.today),
     sessions: data.sessions, subagents: data.subagents, tools: data.tools, skills: data.skills, skillSources: data.skillSources, facts, projectRank,
+    compactions: (data.compactions ?? []).map(([s, d, m, e, sub, auto, pre, post, wait, kept, nth, next, turns, tail, sum, rb]): Compaction => ({ s, d, m, e, sub, auto, pre, post, wait, kept, nth, next, turns, tail, sum, rb })),
+    context: (data.context ?? []).map(([s, d, m, e, b, n, r]): Ctx => ({ s, d, m, e, b, n, r })),
+    edges: data.edges ?? [], points: data.points ?? [], fires: data.fires ?? {}, // per model, the context at which compaction fires now
     pColor: (p: number) => { const r = projectRank.indexOf(p); return r < 5 ? "c" + (r + 1) : "c0"; },
   };
 }
@@ -60,6 +76,10 @@ export type Split = "model" | "kind";
 export function slice(M: Model, f: Filter, from = f.from, to = f.to) {
   return M.facts.filter((x) => x.d >= from && x.d <= to && (f.project < 0 || M.sessions[x.s].p === f.project) && (f.model < 0 || x.m === f.model) && (f.effort < 0 || x.e === f.effort));
 }
+
+// Compactions and context rows under the same filter as the facts.
+export const keep = (M: Model, f: Filter, from = f.from, to = f.to) => <T extends { s: number; d: string; m: number; e: number }>(x: T) =>
+  x.d >= from && x.d <= to && (f.project < 0 || M.sessions[x.s].p === f.project) && (f.model < 0 || x.m === f.model) && (f.effort < 0 || x.e === f.effort);
 
 export const CAUSES = ["start", "compaction", "idle", "other"] as const;
 const RB_IDLE = CAUSES.indexOf("idle") * 3, RB_GAPS = CAUSES.length * 3;

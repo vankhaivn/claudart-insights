@@ -363,3 +363,31 @@ button.field:focus-visible, .disc:focus-visible, .clear:focus-visible, .cal-step
 .chartseg button { display: inline-flex; align-items: center; }
 .chartseg svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .card > header .segs { align-items: center; }
+
+/* context: what each compaction kept and left to work with, the cost of reading the context by size, and the replay */
+.gauge { margin: 2px 0 6px; }
+.gauge .track { display: flex; gap: 2px; height: 14px; }
+.gauge .track i { display: block; height: 100%; }
+.gauge .track i:first-child { border-radius: 4px 0 0 4px; } .gauge .track i:last-child { border-radius: 0 4px 4px 0; }
+.gauge .ticks { position: relative; height: 18px; margin-top: 6px; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.gauge .ticks span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.gauge .ticks span:first-child { transform: none; } .gauge .ticks span:last-child { transform: translateX(-100%); color: var(--ink2); }
+.ctx .hstats { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 16px 0 18px; }
+.ctx .hstats .tipped { cursor: default; text-decoration: underline dotted var(--base); text-underline-offset: 5px; outline-offset: 3px; }
+.ctx td, .ctx th { vertical-align: middle; }
+.ctx td.lbl { font-weight: 550; } .ctx td.lbl .sub { display: inline; margin: 0 0 0 6px; }
+.ctx tfoot td { border-top: 1px solid var(--base); border-bottom: 0; color: var(--ink2); font-weight: 600; }
+.ctx .better { color: var(--good); font-weight: 600; } .ctx .worse { color: var(--neg); font-weight: 600; }
+.cell-bar { width: 42%; }
+td.cell-bar .split.kinds { min-width: 0; height: 20px; margin: 0; }
+.bar1 { display: block; height: 8px; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 2px; }
+.est { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border: 1px dashed var(--base); border-radius: 999px; background: none; color: var(--ink2); font: inherit; font-size: 12px; font-weight: 500; cursor: default; }
+.est:hover, .est:focus-visible { color: var(--ink); border-color: var(--ink2); }
+.chip { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, var(--raised)); color: var(--accent-ink); font-size: 11.5px; font-weight: 600; vertical-align: 1px; }
+/* where compaction fires now: the row outlined in the accent */
+.ctx tbody tr.now td { --line: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+.ctx tbody tr.now td:first-child { border-radius: 8px 0 0 8px; box-shadow: inset 1px 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+.ctx tbody tr.now td:last-child { border-radius: 0 8px 8px 0; box-shadow: inset -1px 1px 0 var(--line), inset 0 -1px 0 var(--line); }
+@media (max-width: 600px) { .ctx .hstats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ctx .hstats dd { font-size: 17px; } }
+.kpi { container-type: inline-size; }
+@container (max-width: 260px) { .kpis:has(.v small) .spark { display: none; } }

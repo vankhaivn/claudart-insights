@@ -108,7 +108,9 @@ export function createIngester(db, timeZone, hasFile = () => false) {
     skill: db.prepare("INSERT OR IGNORE INTO skills(id, file_id, line, session_id, ts, name, via, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"),
     skillResult: db.prepare("UPDATE skills SET is_error = ? WHERE id = ?"),
     skillSource: db.prepare("UPDATE skills SET source = ? WHERE id = ?"),
-    compaction: db.prepare("INSERT OR IGNORE INTO compactions(uuid, file_id, session_id, ts) VALUES (?, ?, ?, ?)"),
+    compaction: db.prepare(`INSERT OR IGNORE INTO compactions(uuid, file_id, line, session_id, agent_id, ts, trigger, pre_tokens, post_tokens, duration_ms)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+    boundaryBefore: db.prepare("SELECT 1 FROM compactions WHERE file_id = ? AND line BETWEEN ? AND ? AND trigger IS NOT NULL LIMIT 1"),
     cost: db.prepare(`INSERT OR REPLACE INTO cost_states(file_id, line, session_id, start_ms, cost, incomplete, api_ms, tool_ms,
       lines_added, lines_removed, model_usage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
     title: db.prepare("INSERT OR REPLACE INTO titles(file_id, line, session_id, kind, title) VALUES (?, ?, ?, ?, ?)"),
@@ -157,7 +159,13 @@ export function createIngester(db, timeZone, hasFile = () => false) {
       return { added: 0, ...seen, own: false };
     }
 
-    if (rec.type === "assistant") {
+    if (rec.type === "system" && rec.subtype === "compact_boundary") {
+      // The boundary carries what the compaction did; the summary record after it names it as the anchor of what was kept,
+      // so both resolve to one row keyed by the summary.
+      const m = rec.compactMetadata ?? {};
+      const key = m.preservedSegment?.anchorUuid ?? m.preservedMessages?.anchorUuid ?? rec.uuid;
+      q.compaction.run(key, file.id, line, session, agent, rec.timestamp ?? null, m.trigger ?? null, m.preTokens ?? null, m.postTokens ?? null, m.durationMs ?? null);
+    } else if (rec.type === "assistant") {
       const msg = rec.message ?? {};
       const u = msg.usage;
       if (msg.id && u && msg.model !== "<synthetic>" && rec.timestamp) {
@@ -190,7 +198,8 @@ export function createIngester(db, timeZone, hasFile = () => false) {
       // A typed slash command; it counts as a skill once the host loads one for it, which a built-in command never does.
       const command = file.kind === "main" && !rec.isMeta && !rec.isSidechain && body.match(/<command-name>\/?([^<]+)<\/command-name>/);
       if (command) q.skill.run(rec.uuid, file.id, line, session, rec.timestamp ?? null, command[1].trim(), "command", null);
-      if (rec.isCompactSummary) q.compaction.run(rec.uuid, file.id, session, rec.timestamp ?? null);
+      // A summary with no boundary just before it (older hosts) still counts, without the boundary's figures.
+      if (rec.isCompactSummary && !q.boundaryBefore.get(file.id, line - 50, line)) q.compaction.run(rec.uuid, file.id, line, session, agent, rec.timestamp ?? null, null, null, null, null);
       if (file.kind === "main") {
         const typed = ownerText(rec);
         if (typed) q.owner.run(rec.uuid, file.id, line, session, rec.timestamp ?? null, "typed", typed);

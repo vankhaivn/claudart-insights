@@ -16,6 +16,7 @@ const WIDTH = 1440, HEIGHT = 900, SCALE = 2, MARGIN = 14;
 const SHOTS = [
   { name: "overview", path: "/?range=30" },
   { name: "cache", path: "/activity?range=30", heading: "Cache rebuilt", whole: true },
+  { name: "context", path: "/context?range=30", heading: "Compacting at other points" },
   { name: "treemap", path: "/projects?range=30", heading: "Each project's share" },
   { name: "models", path: "/subagents?range=30", heading: "Main thread and subagents", whole: true },
   { name: "sessions", path: "/sessions?range=30&sort=cost", heading: "Sessions", height: 568 },

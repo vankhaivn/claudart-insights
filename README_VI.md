@@ -13,7 +13,7 @@
 
 <p align="center"><sub>Mọi con số trên trang này là dữ liệu demo bịa ra, do <code>make demo</code> phục vụ.</sub></p>
 
-Insights lưu trữ transcript mà Claude Code giữ trong `~/.claude/projects`, nạp vào SQLite và tính giá từng request. Sáu màn hình trả lời những gì con số tổng che đi: dự án nào tốn nhất, phiên nào kéo dài, model và subagent nào làm phần việc, và lúc nào prompt cache bị dựng lại vô ích.
+Insights lưu trữ transcript mà Claude Code giữ trong `~/.claude/projects`, nạp vào SQLite và tính giá từng request. Bảy màn hình trả lời những gì con số tổng che đi: dự án nào tốn nhất, phiên nào kéo dài, model và subagent nào làm phần việc, lúc nào prompt cache bị dựng lại vô ích, và context dài tốn bao nhiêu.
 
 Không có gì rời khỏi máy bạn. Server chỉ lắng nghe trên `127.0.0.1`, server và trang web đều không gửi request ra ngoài.
 
@@ -26,6 +26,15 @@ Mỗi lần prompt cache bị dựng lại tốn bao nhiêu và vì sao: phiên 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/cache-dark.png">
   <img src="docs/assets/cache-light.png" alt="Số lần cache bị dựng lại theo nguyên nhân, kèm chi phí thêm">
+</picture>
+
+### Context
+
+Mỗi lần nén context tốn bao nhiêu, đọc lại context ở từng cỡ tốn bao nhiêu, và cùng phần việc đó sẽ tốn bao nhiêu nếu nén ở mốc khác.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/context-dark.png">
+  <img src="docs/assets/context-light.png" alt="Các phiên được chạy lại với mốc nén khác, so với mốc nén hiện tại">
 </picture>
 
 ### Dự án
@@ -127,7 +136,7 @@ Chi phí tính theo giá niêm yết. Với gói thuê bao, đó là hạn mức
 <details>
 <summary><b>Cache bị dựng lại</b></summary>
 
-Claude Code giữ cuộc trò chuyện trong prompt cache, nên phần lớn input token là lần đọc rẻ. Thứ tốn tiền là lần dựng lại: một request ghi phần lớn context vào cache lần nữa, đắt gấp 25 đến 40 lần đọc cache. Một request được tính là dựng lại khi ghi ít nhất 20.000 token vào cache và hơn một nửa tổng số token nó đọc hoặc ghi. Màn hình Hoạt động và lệnh `usage` đếm theo từng nguyên nhân:
+Claude Code giữ cuộc trò chuyện trong prompt cache, nên phần lớn input token là lần đọc rẻ. Thứ tốn tiền là lần dựng lại: một request ghi phần lớn context vào cache lần nữa, đắt gấp 25 đến 40 lần đọc cache. Một request được tính là dựng lại khi ghi ít nhất 20.000 token vào cache và hơn một nửa tổng số token nó đọc hoặc ghi, hoặc khi là request đầu tiên của luồng sau một lần nén context và ghi ít nhất 20.000 token. Màn hình Hoạt động và lệnh `usage` đếm theo từng nguyên nhân:
 
 | Nguyên nhân | Ý nghĩa |
 | --- | --- |
@@ -139,6 +148,19 @@ Claude Code giữ cuộc trò chuyện trong prompt cache, nên phần lớn inp
 Chi phí thêm của một lần dựng lại là số token được ghi lại tính theo giá ghi cache (5m và 1h như đã ghi nhận) trừ đi chính số token đó tính theo giá đọc cache, theo dòng giá hiệu lực trong ngày. Màn hình Phiên làm việc ghi số lần dựng lại sau khi nghỉ của mỗi phiên, là số lần cache hết hạn, dưới tiêu đề phiên.
 
 Không thể giải thích `khác` từ transcript. Ngưỡng 20.000 token và một nửa là quy ước cố định, không phải số Claude Code báo. Model không có dòng giá thì không có chi phí thêm, nhưng lần dựng lại vẫn được đếm.
+
+</details>
+
+<details>
+<summary><b>Nén context</b></summary>
+
+Claude Code nén cuộc trò chuyện khi context chạm một mốc do context window quyết định: nó viết một bản tóm tắt và luồng đi tiếp từ đó. Transcript ghi mỗi lần nén kèm context trước và sau, và thời gian nén; transcript cũ chỉ giữ bản tóm tắt thì lần nén vẫn được đếm, nhưng không có các số đó.
+
+Một lần nén tốn request viết bản tóm tắt cộng lần dựng lại cache ngay sau. Request viết tóm tắt không để lại bản ghi trong transcript, nên theo từng phiên và model, nó là phần token trong bản ghi chi phí của Claude Code vượt quá transcript, tính giá theo tỷ lệ của nó trong chi phí của bản ghi đó và chia đều cho các lần nén.
+
+Màn hình Context xếp chi phí đọc lại context theo context mà mỗi request mang. Chi phí Claude Code ghi nhận mà không có request nào đứng sau, như các request viết tóm tắt, có một dòng riêng, nên các dòng cộng lại bằng con số ở màn hình Tổng quan.
+
+Mốc nén hiện tại là trung vị của context trước năm lần nén tự động gần nhất của cuộc trò chuyện chính, theo từng họ model. Màn hình chạy lại mỗi cuộc trò chuyện chính ở các mốc khác: context tăng giữa các request như thực tế, và khi chạm mốc thì cuộc trò chuyện nén, trả chi phí một lần nén và bắt đầu lại từ phần mà một lần nén thật đã giữ lại. Đây là ước tính theo giá niêm yết. Phần đọc lại file sau mỗi lần nén chưa được tính, nên các mốc thấp hơn mốc hiện tại thực tế tốn hơn số hiện ra.
 
 </details>
 
