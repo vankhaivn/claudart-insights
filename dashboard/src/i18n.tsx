@@ -14,8 +14,8 @@ export const T = {
     nodata: "Không có dữ liệu trong khoảng lọc này.", wd: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"], wdShort: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"], theme: "Đổi sáng/tối",
    
     context: "Context", compacting: "Nén context", readingCtx: "Đọc lại context", ofCost: (p: string) => `${p} chi phí`, nAuto: (n: string) => `${n} tự động`, nManual: (n: string) => `${n} thủ công`, nInSubs: (n: string) => `${n} trong subagent`,
-    keptAfter: "Giữ lại sau khi nén", roomToWork: "Còn trống để làm việc", compactsAt: (v: string) => `Nén ở ${v}`, wait: "Chờ nén", inAll: (d: string) => `tổng ${d}`, eachCosts: "Mỗi lần tốn", ofTheirSessions: (p: string) => `${p} chi phí các phiên đó`,
-    oneCompaction: "Một lần nén", summaryReq: "Viết bản tóm tắt", rewriteAfter: "Ghi lại cache sau đó", endedSoon: "Kết thúc ngay sau", endedWithin: (n: number) => `phiên, trong ${n} request`, inSession: "Lần trong phiên", nth: ["Lần 1", "Lần 2", "Lần 3", "Lần 4 trở đi"],
+    keptAfter: "Giữ lại sau khi nén", roomToWork: "Còn trống để làm việc", compactsAt: (v: string) => `Nén ở ${v}`, wait: "Chờ nén", inAll: (d: string) => `tổng ${d}`, eachCosts: "Mỗi lần tốn", eachSplit: (a: string, b: string) => [`tóm tắt ${a}`, `ghi cache ${b}`],
+    endedSoon: "Kết thúc ngay sau", endedWithin: (n: number) => `phiên, trong ${n} request`, inSession: "Lần trong phiên", nth: ["Lần 1", "Lần 2", "Lần 3", "Lần 4 trở đi"],
     keptCol: "Giữ lại", reqsToNext: "Request tới lần sau", turnsToNext: "Lượt owner tới lần sau", byCtx: "theo context mỗi request", ctxCol: "Context", perReqCol: "Mỗi request", above: (v: string) => `Trên ${v}`, ofCostReqs: (p: string) => `chi phí, ${p} số request`,
     perReqAt: (b: string) => `Mỗi request ở ${b}`, whatAt: (b: string) => `so với ở ${b}`, noRequest: "Không có request trong transcript", under: (v: string) => `Dưới ${v}`, andOver: (v: string) => `Từ ${v}`,
     otherPoints: "Nén ở mốc khác", estimate: "Ước tính", estNotes: ["Mỗi phiên được chạy lại với mốc nén đó", "Chưa tính phần đọc lại file sau mỗi lần nén, nên mốc thấp hơn hiện tại thực tế tốn hơn số hiện", "Giá niêm yết"],
@@ -36,8 +36,8 @@ export const T = {
     nodata: "No data in this filter range.", wd: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], wdShort: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"], theme: "Toggle light/dark",
    
     context: "Context", compacting: "Compacting", readingCtx: "Reading the context", ofCost: (p: string) => `${p} of cost`, nAuto: (n: string) => `${n} auto`, nManual: (n: string) => `${n} manual`, nInSubs: (n: string) => `${n} in subagents`,
-    keptAfter: "Kept after compacting", roomToWork: "Room to work", compactsAt: (v: string) => `Compacts at ${v}`, wait: "Wait", inAll: (d: string) => `${d} in all`, eachCosts: "Each costs", ofTheirSessions: (p: string) => `${p} of their sessions' cost`,
-    oneCompaction: "One compaction", summaryReq: "Writing the summary", rewriteAfter: "Rebuilding the cache after", endedSoon: "Ended soon after", endedWithin: (n: number) => `sessions, within ${n} requests`, inSession: "In the session", nth: ["1st", "2nd", "3rd", "4th or later"],
+    keptAfter: "Kept after compacting", roomToWork: "Room to work", compactsAt: (v: string) => `Compacts at ${v}`, wait: "Wait", inAll: (d: string) => `${d} in all`, eachCosts: "Each costs", eachSplit: (a: string, b: string) => [`summary ${a}`, `cache write ${b}`],
+    endedSoon: "Ended soon after", endedWithin: (n: number) => `sessions, within ${n} requests`, inSession: "In the session", nth: ["1st", "2nd", "3rd", "4th or later"],
     keptCol: "Kept after", reqsToNext: "Requests to next", turnsToNext: "Owner turns to next", byCtx: "by context per request", ctxCol: "Context", perReqCol: "Per request", above: (v: string) => `Above ${v}`, ofCostReqs: (p: string) => `of the cost, ${p} of requests`,
     perReqAt: (b: string) => `Per request at ${b}`, whatAt: (b: string) => `what it is at ${b}`, noRequest: "No request in the transcript", under: (v: string) => `Under ${v}`, andOver: (v: string) => `${v} and over`,
     otherPoints: "Compacting at other points", estimate: "Estimate", estNotes: ["Each session replayed with compaction at that point", "Files read again after a compaction are not counted, so points below now cost more than shown", "List prices"],

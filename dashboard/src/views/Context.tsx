@@ -37,7 +37,7 @@ export function Context({ F, list }: { F: Fact[]; list: string[] }) {
           d={<Delta a={reading(F)} b={PF ? reading(PF) : undefined} side="none" />} series={daily(F, (x) => x.k?.[0] ?? 0)} />
       </div>
       <div className="grid half">
-        <Compactions C={C} F={F} />
+        <Compactions C={C} />
         <Reading F={F} X={X} />
       </div>
       <Replay C={C} X={X} />
@@ -47,7 +47,7 @@ export function Context({ F, list }: { F: Fact[]; list: string[] }) {
 
 // How compactions went: what each kept and left to work with, the wait, what one cost, the sessions that ended right after
 // one, and the stretch from each to the next by its order in the session.
-function Compactions({ C, F }: { C: Compaction[]; F: Fact[] }) {
+function Compactions({ C }: { C: Compaction[] }) {
   const { t, L, f } = useDash();
   const main = C.filter((x) => !x.sub), auto = C.filter((x) => x.auto === 1);
   const parts = [[auto.filter((x) => !x.sub).length, L.nAuto], [main.filter((x) => x.auto === 0).length, L.nManual], [C.length - main.length, L.nInSubs]] as const;
@@ -56,7 +56,6 @@ function Compactions({ C, F }: { C: Compaction[]; F: Fact[] }) {
   const measured = median(auto.filter((x) => !x.sub).map((x) => x.pre)) ?? median(auto.map((x) => x.pre)), fire = measured && round5(measured), kept = median(main.map((x) => x.kept));
   const waits = C.map((x) => x.wait).filter((x): x is number => x !== null);
   const priced = C.filter((x) => x.sum !== null), sum = priced.reduce((n, x) => n + x.sum!, 0) / (priced.length || 1), rb = C.reduce((n, x) => n + x.rb, 0) / C.length;
-  const mine = new Set(C.map((x) => x.s)), theirs = costOf(F.filter((x) => mine.has(x.s)));
   const soon = new Set(main.filter((x) => x.tail !== null && x.tail < TAIL).map((x) => x.s)).size;
   const groups = [1, 2, 3, 4].map((k) => main.filter((x) => (k < 4 ? x.nth === k : x.nth >= 4)));
   return (
@@ -71,8 +70,7 @@ function Compactions({ C, F }: { C: Compaction[]; F: Fact[] }) {
       </> : null}
       <Stats items={[
         { label: t("wait"), value: waits.length ? `${Math.round(median(waits)! / 1000)} s` : "—", sub: waits.length ? L.inAll(f.dur(waits.reduce((a, b) => a + b, 0) / 60000)) : undefined },
-        { label: t("eachCosts"), value: <span className="tipped" tabIndex={0} data-tip={tip(t("oneCompaction"), [["k1", t("summaryReq"), f.usd(sum)], ["k2", t("rewriteAfter"), f.usd(rb)]])}>{f.usd(sum + rb)}</span>,
-          sub: theirs ? L.ofTheirSessions(f.pct(compacting(C) / theirs)) : undefined },
+        { label: t("eachCosts"), value: f.usd(sum + rb), sub: L.eachSplit(f.usd(sum), f.usd(rb)).map((s) => <span key={s} className="line">{s}</span>) },
         { label: t("endedSoon"), value: f.int(soon), sub: L.endedWithin(TAIL) },
       ]} />
       {main.length ? <div className="scroll"><table>

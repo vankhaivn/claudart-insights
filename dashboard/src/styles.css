@@ -82,8 +82,8 @@ h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
 .kpi { padding: 16px 18px 14px; }
 .kpi .l { color: var(--ink2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kpi .vr { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: 6px; }
-.kpi .v { font-size: 28px; font-weight: 620; line-height: 1.1; letter-spacing: -.02em; white-space: nowrap; }
-.kpi .v small { font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--ink2); }
+.kpi .v { min-width: 0; font-size: 28px; font-weight: 620; line-height: 1.1; letter-spacing: -.02em; }
+.kpi .v small { font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--ink2); white-space: nowrap; }
 .kpi .d { margin-top: 10px; color: var(--ink2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kpi .d b { color: var(--ink); font-weight: 600; } .kpi .d b.better { color: var(--good); } .kpi .d b.worse { color: var(--neg); } .kpi .d b.vol { color: var(--up); }
 .spark { width: 72px; height: 24px; flex: none; overflow: visible; margin-bottom: 4px; }
@@ -167,7 +167,7 @@ tbody tr.go:hover td, tbody tr.go:hover th { background: var(--wash); }
 .heat .cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
 .hstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 0; }
 .hstats div { display: grid; align-content: start; gap: 2px; min-width: 0; }
-.hstats dt { color: var(--ink2); font-size: 12px; } .hstats dd { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 20px; font-weight: 650; white-space: nowrap; } .hstats .sub { color: var(--muted); font-size: 12px; }
+.hstats dt { color: var(--ink2); font-size: 12px; } .hstats dd { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 20px; font-weight: 650; white-space: nowrap; } .hstats .sub { color: var(--muted); font-size: 12px; } .hstats .sub .line { display: block; white-space: nowrap; }
 .hstats dd.err { color: var(--neg); } .hstats + .rank, .hstats + .legend, .hstats + .rows { margin-top: 18px; } .lead + .hstats, header + .hstats { margin-top: 2px; }
 .hstats .gap { display: block; height: 16px; } .hstats .meter { display: block; height: 6px; margin: 6px 0 4px; border-radius: 3px; background: var(--wash); overflow: hidden; } .hstats .meter i { display: block; height: 100%; border-radius: 3px; }
 .hstats .dots { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; height: 7px; margin: 5px 0 4px; } .hstats .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--wash); box-shadow: inset 0 0 0 1px var(--base); } .hstats .dots i.on { background: var(--seq); box-shadow: none; }
