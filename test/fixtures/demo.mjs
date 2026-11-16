@@ -6,7 +6,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { priceAt, readPrices, requestCost } from "../../src/prices.mjs";
-import { assistant, cost, sid, user, writeTranscript } from "./build.mjs";
+import { assistant, compaction, cost, sid, user, writeTranscript } from "./build.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PORT = Number(process.argv[2] ?? 4311);
@@ -82,9 +82,18 @@ function thread({ t, model, effort, longCache, turns, cwd, owner, onTask }) {
   for (let turn = 0; turn < turns; turn++) {
     if (turn) t += (owner ? pick([[int(20, 240), 88], [int(400, 840), 6], [int(1200, 3000), 1], [int(4200, 10800), 5]]) : int(5, 30)) * 1000;
     if (owner) recs.push(user(new Date(t).toISOString(), owner(turn), { cwd }));
-    if (ctx > 150000) { recs.push(user(new Date(t).toISOString(), "Summary of the conversation so far", { cwd, isCompactSummary: true })); ctx = int(18000, 30000); last = null; }
     const steps = int(2, 9);
     for (let s = 0; s < steps; s++) {
+      if (ctx > 150000) {
+        // The request that writes the summary leaves no record of its own; only the host's totals carry it.
+        const w = int(6000, 12000);
+        add(model, { input_tokens: int(3000, 4500), output_tokens: int(6000, 11000), cache_read_input_tokens: ctx, cache_creation_input_tokens: w,
+          cache_creation: { ephemeral_5m_input_tokens: longCache ? 0 : w, ephemeral_1h_input_tokens: longCache ? w : 0 } });
+        const pre = ctx, wait = int(40, 110);
+        ctx = int(18000, 30000); last = null;
+        recs.push(...compaction(new Date(t).toISOString(), { trigger: rnd() < 0.05 ? "manual" : "auto", pre, post: ctx, ms: wait * 1000, cwd, sidechain: !owner }));
+        t += wait * 1000;
+      }
       const grow = int(800, 3500), rebuild = last === null || t - last > life || rnd() < 0.004;
       const write = rebuild ? ctx + grow + (ctx ? 0 : int(12000, 20000)) : grow;
       ctx = rebuild ? write : ctx + grow;

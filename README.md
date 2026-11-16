@@ -13,7 +13,7 @@
 
 <p align="center"><sub>Every figure on this page is made-up demo data, served by <code>make demo</code>.</sub></p>
 
-Insights archives the transcripts Claude Code keeps in `~/.claude/projects`, reads them into SQLite and prices every request. Six views answer what the totals hide: which project costs the most, which sessions ran long, which model and subagent did the work, and when the prompt cache was rebuilt for nothing.
+Insights archives the transcripts Claude Code keeps in `~/.claude/projects`, reads them into SQLite and prices every request. Seven views answer what the totals hide: which project costs the most, which sessions ran long, which model and subagent did the work, when the prompt cache was rebuilt for nothing, and what a long context costs.
 
 Nothing leaves your machine. The server listens on `127.0.0.1` only, and neither the server nor the page makes a network request.
 
@@ -26,6 +26,15 @@ What each rebuild of the prompt cache cost, and why it happened: a new session, 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/cache-dark.png">
   <img src="docs/assets/cache-light.png" alt="Cache rebuilds by cause, with their extra cost">
+</picture>
+
+### Context
+
+What each compaction costs, what reading the context costs at each size, and what the same work would have cost had compaction fired at another point.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/context-dark.png">
+  <img src="docs/assets/context-light.png" alt="The same sessions replayed with compaction at other points, against where it fires now">
 </picture>
 
 ### Projects
@@ -127,7 +136,7 @@ Cost is list price. On a subscription it is quota spent, not money.
 <details>
 <summary><b>Cache rebuilds</b></summary>
 
-Claude Code keeps your conversation in a prompt cache, so most input tokens are cheap reads. What costs money is a rebuild: a request that writes most of the context into the cache again, 25 to 40 times the price of reading it. A request is a rebuild when it writes at least 20,000 tokens to the cache and more than half of everything it read or wrote. The Activity view and `usage` count them per cause:
+Claude Code keeps your conversation in a prompt cache, so most input tokens are cheap reads. What costs money is a rebuild: a request that writes most of the context into the cache again, 25 to 40 times the price of reading it. A request is a rebuild when it writes at least 20,000 tokens to the cache and more than half of everything it read or wrote, or when it is the first request of its thread after a compaction and writes at least 20,000 tokens. The Activity view and `usage` count them per cause:
 
 | Cause | Meaning |
 | --- | --- |
@@ -139,6 +148,19 @@ Claude Code keeps your conversation in a prompt cache, so most input tokens are 
 The extra cost of a rebuild is the rewritten tokens priced as cache writes (5m and 1h as recorded) minus the same tokens priced as reads, from the price row in force that day. The Sessions view counts the idle rebuilds of each session as cache lapses, under its title.
 
 `other` cannot be explained from transcripts. The 20,000-token and one-half thresholds are a fixed convention, not something Claude Code reports. A model without a price row has no extra cost, and its rebuilds are counted without one.
+
+</details>
+
+<details>
+<summary><b>Compaction and the context</b></summary>
+
+Claude Code compacts a conversation when its context reaches a point set by the context window: it writes a summary and the thread goes on from it. The transcript records each compaction with the context before and after it and how long it took; an older transcript that kept only the summary still counts the compaction, without those figures.
+
+One compaction costs the request that writes the summary plus the cache rebuild after it. The summary request leaves no record in the transcript, so per session and model it is the tokens in Claude Code's cost record beyond the transcript's, priced as their share of that record's cost and split evenly over the compactions.
+
+The Context view sorts the cost of reading the context by the context each request carried. Cost that Claude Code recorded with no request behind it, such as the summary requests, has a row of its own, so the rows add up to the Overview's.
+
+Where compaction fires now is the median context before the last five automatic compactions of the main conversation, per model family. The view replays each main conversation at other points: the context grows between requests as it did, and when it reaches the point the conversation compacts, pays one compaction and starts again from what a real compaction kept. It is an estimate at list prices. Files read again after a compaction are not counted, so points below the current one cost more than shown.
 
 </details>
 
