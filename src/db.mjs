@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // Bump when the schema changes: the database is then rebuilt from the archive.
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const SCHEMA = `
 CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
@@ -37,7 +37,9 @@ CREATE TABLE skills(id TEXT PRIMARY KEY, file_id INTEGER, line INTEGER, session_
   source TEXT, is_error INTEGER DEFAULT 0);
 CREATE INDEX skills_session ON skills(session_id);
 CREATE TABLE subagents(agent_id TEXT PRIMARY KEY, session_id TEXT, type TEXT, tool_use_id TEXT);
-CREATE TABLE compactions(uuid TEXT PRIMARY KEY, file_id INTEGER, session_id TEXT, ts TEXT);
+CREATE TABLE compactions(uuid TEXT PRIMARY KEY, file_id INTEGER, line INTEGER, session_id TEXT, agent_id TEXT, ts TEXT,
+  trigger TEXT, pre_tokens INTEGER, post_tokens INTEGER, duration_ms INTEGER);
+CREATE INDEX compactions_session ON compactions(session_id);
 CREATE TABLE cost_states(file_id INTEGER, line INTEGER, session_id TEXT, start_ms INTEGER, cost REAL,
   incomplete INTEGER, api_ms INTEGER, tool_ms INTEGER, lines_added INTEGER, lines_removed INTEGER,
   model_usage TEXT, PRIMARY KEY(file_id, line));

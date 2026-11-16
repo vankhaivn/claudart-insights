@@ -3,6 +3,7 @@ import { familyOf } from "./providers/claude.mjs";
 import { zoner } from "./zone.mjs";
 import { cacheSaving, costKinds, priceAt, priceReport, readPrices, requestCost, usageKinds } from "./prices.mjs";
 import { CAUSES } from "./rebuilds.mjs";
+import { BUCKETS, PARTS, REPLAY, bucketOf, compactionsOf, constantsOf, contextOf, levelsOf, replay, summaryCosts } from "./context.mjs";
 
 const FAMILY_NAMES = { opus: "Opus", sonnet: "Sonnet", haiku: "Haiku", fable: "Fable" };
 export const modelName = (family) => FAMILY_NAMES[family] ?? family;
@@ -52,7 +53,7 @@ function spreadTargets(key, reqs) {
   return reqs.filter((r) => r.family === family);
 }
 
-// Rows in the shapes the dashboard's views read: sessions, facts, subagents, tools, skills.
+// Rows in the shapes the dashboard's views read: sessions, facts, subagents, tools, skills, compactions and context rows.
 export function loadRows(db, config, now = new Date()) {
   const zone = zoner(config.timeZone);
   const minute = new Intl.DateTimeFormat("en-GB", { timeZone: config.timeZone, minute: "2-digit" });
@@ -65,6 +66,10 @@ export function loadRows(db, config, now = new Date()) {
   for (const m of priceReport(db)) for (const x of m.misses) off.set(x.id, [...(off.get(x.id) ?? []), m.model]);
   const owners = new Map(db.prepare("SELECT session_id, COUNT(*) n FROM owner_messages GROUP BY session_id").all().map((r) => [r.session_id, r.n]));
   const compactions = new Map(db.prepare("SELECT session_id, COUNT(*) n FROM compactions GROUP BY session_id").all().map((r) => [r.session_id, r.n]));
+  const compactionRows = new Map();
+  for (const c of db.prepare("SELECT session_id, agent_id, line, ts, trigger, pre_tokens, post_tokens, duration_ms FROM compactions").all()) (compactionRows.get(c.session_id) ?? compactionRows.set(c.session_id, []).get(c.session_id)).push(c);
+  const ownerTimes = new Map();
+  for (const o of db.prepare("SELECT session_id, ts FROM owner_messages WHERE ts IS NOT NULL").all()) (ownerTimes.get(o.session_id) ?? ownerTimes.set(o.session_id, []).get(o.session_id)).push(o.ts);
   const calls = db.prepare("SELECT session_id, name, COUNT(*) n, SUM(coalesce(is_error, 0)) e FROM tool_calls GROUP BY session_id, name").all();
   const skillUses = db.prepare("SELECT session_id, name, via, source, is_error, ts FROM skills").all();
   const subs = db.prepare(`SELECT f.agent_id, f.session_id, a.type, a.tool_use_id, (SELECT model FROM tool_calls t WHERE t.id = a.tool_use_id) parent_model
@@ -106,8 +111,30 @@ export function loadRows(db, config, now = new Date()) {
   for (const s of sessionRows) projectOut.set(s.project ?? "(no project)", (projectOut.get(s.project ?? "(no project)") ?? 0) + (bySession.get(s.id) ?? []).reduce((n, r) => n + r.output, 0));
   const projects = [...projectOut.keys()].sort((a, b) => projectOut.get(b) - projectOut.get(a) || a.localeCompare(b));
 
+  // Every compaction with the requests around it, and what its summary request cost, before any session is placed:
+  // where compaction fires now and what one takes come from all of them.
+  const around = new Map(), summaries = new Map();
+  for (const s of sessionRows) {
+    const reqs = bySession.get(s.id) ?? [], comps = compactionRows.get(s.id);
+    if (!comps) continue;
+    const rows = compactionsOf(reqs, comps, ownerTimes.get(s.id) ?? []);
+    around.set(s.id, rows);
+    const day = zone(s.first_ts ?? s.first_req).day;
+    const costs = !s.cost_incomplete && s.model_cost ? JSON.parse(s.model_cost) : null;
+    for (const [x, v] of summaryCosts(rows, s.model_tokens ? JSON.parse(s.model_tokens) : null, costs, (key) => spreadTargets(key, reqs), prices, day)) summaries.set(x, v);
+  }
+  const allAround = [...around.values()].flat();
+  const { levels, fallback } = levelsOf(allAround);
+  const levelOf = (family) => levels[family] ?? fallback;
+  const constants = constantsOf(allAround, summaries);
+  // A compaction whose summary request cannot be priced from its session takes the average of its family's.
+  const familyCost = new Map();
+  for (const [x, v] of summaries) { const a = familyCost.get(x.before.family) ?? familyCost.set(x.before.family, [0, 0]).get(x.before.family); a[0] += v.cost; a[1]++; }
+
   const sessions = [];
   const facts = new Map();
+  const ctxRows = new Map();
+  const compactionList = [];
   const index = new Map();
   for (const s of sessionRows) {
     const reqs = bySession.get(s.id) ?? [];
@@ -177,12 +204,39 @@ export function loadRows(db, config, now = new Date()) {
         rb.forEach((x, k) => { f.rb[k] += x; });
       }
     };
+    // Context rows: per session, day, model and effort, the cost of reading the context by context size (the last part is
+    // a cost the host charged with no request, whose context is unknown), the requests per size, and the replay.
+    const ctxRow = (d, family, effort) => {
+      const key = `${i}|${d}|${family}|${effort}`;
+      return ctxRows.get(key) ?? ctxRows.set(key, { s: i, d, m: modelIdx(family), e: effort, b: new Array(BUCKETS + 1).fill(0), n: new Array(BUCKETS).fill(0), r: null }).get(key);
+    };
+    const main = reqs.filter((r) => !r.is_sub).sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts) || a.line - b.line);
+    const rows = around.get(s.id) ?? [];
+    const replayed = replay(main, rows.filter((x) => !x.sub).map((x) => Date.parse(x.c.ts)), prices, constants, levelOf);
     for (const r of reqs) {
       const p = priceAt(prices, r.model, r.day);
       put(r.day, r.hour, r.family, r.is_sub, r.effort ?? "", { q: 1, i: r.input, o: r.output, cr: r.cache_read, cw: r.cache_write, th: r.thinking, c: costOf.get(r) ?? 0, sv: p ? cacheSaving(p.p, r) : 0, tc: r.tc, te: r.te, ot: r.ot }, rebuildVector(r), kindsOf.get(r));
+      const x = ctxRow(r.day, r.family, r.effort ?? ""), k = bucketOf(contextOf(r));
+      x.b[k] += kindsOf.get(r)?.[0] ?? 0;
+      x.n[k]++;
+      const v = replayed.get(r);
+      if (v) { x.r ??= new Array(REPLAY * PARTS).fill(0); v.forEach((y, j) => { x.r[j] += y; }); }
     }
     // A model the host charged with no request in the transcript lands on the session's first hour.
-    for (const [key, value, kinds] of unplaced) put(day, hour, key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key), 0, sessions[i].effort, { c: value }, null, kinds);
+    for (const [key, value, kinds] of unplaced) {
+      const family = key === "unknown" ? mostOf(mainOut) ?? "unknown" : familyOf(key);
+      put(day, hour, family, 0, sessions[i].effort, { c: value }, null, kinds);
+      if (kinds) ctxRow(day, family, sessions[i].effort).b[BUCKETS] += kinds[0];
+    }
+    for (const x of rows) {
+      const at = x.before ?? x.after, family = at?.family ?? (mainOut.size ? mostOf(mainOut) : "unknown"), sum = summaries.get(x), avg = familyCost.get(family);
+      compactionList.push({
+        s: i, d: x.c.ts ? zone(x.c.ts).day : day, m: modelIdx(family), e: at?.effort ?? sessions[i].effort, sub: x.sub ? 1 : 0,
+        auto: x.c.trigger === "auto" ? 1 : x.c.trigger === "manual" ? 0 : null, pre: x.c.pre_tokens, post: x.c.post_tokens, wait: x.c.duration_ms,
+        kept: x.after ? contextOf(x.after) : null, nth: x.nth, next: x.next, turns: x.turns, tail: x.tail,
+        sum: sum ? sum.cost : avg ? avg[0] / avg[1] : null, rb: x.after?.rebuild === "compaction" ? x.after.rebuild_extra ?? 0 : 0,
+      });
+    }
   }
 
   const subagents = [];
@@ -206,6 +260,7 @@ export function loadRows(db, config, now = new Date()) {
   const today = zone(now.toISOString()).day;
   return {
     models: families.map(modelName), projects, sessions, facts: factList, subagents, tools, skills, skillSources, today,
+    compactions: compactionList, context: [...ctxRows.values()], levels: Object.fromEntries(families.map((fam, m) => [m, levelOf(fam)])),
     first: factList.reduce((a, f) => (f.d < a ? f.d : a), today), scanned: now.toISOString(),
   };
 }

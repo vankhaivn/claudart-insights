@@ -12,6 +12,12 @@ export const assistant = (ts, id, usage, extra = {}) => ({
   message: { id, model: extra.model ?? "claude-opus-5-5", content: extra.content ?? [{ type: "text", text: "ok" }], usage: { input_tokens: 1, output_tokens: 10, cache_read_input_tokens: 100, cache_creation_input_tokens: 20, output_tokens_details: { thinking_tokens: 4 }, ...usage } },
   ...extra.rec,
 });
+// A compaction as the host writes it: the boundary with its figures, then the summary it names as the anchor of what was kept.
+export function compaction(ts, { trigger = "auto", pre = 400000, post = 20000, ms = 60000, cwd = "/work/demo", sidechain = false } = {}) {
+  const summary = user(ts, "This session is being continued from a previous conversation.", { cwd, isCompactSummary: true, isSidechain: sidechain });
+  return [{ type: "system", subtype: "compact_boundary", uuid: uid(), timestamp: ts, cwd, isSidechain: sidechain,
+    compactMetadata: { trigger, preTokens: pre, postTokens: post, durationMs: ms, preservedSegment: { anchorUuid: summary.uuid } } }, summary];
+}
 export const cost = (total, extra = {}) => ({ type: "cost-state", totalCostUSD: total, totalAPIDuration: 60000, totalToolDuration: 1000, totalLinesAdded: 5, totalLinesRemoved: 2, startTime: extra.startTime ?? 0, modelUsage: extra.modelUsage ?? { "claude-opus-5-5": { costUSD: total } }, hasUnknownModelCost: extra.incomplete ?? false });
 
 export const jsonl = (records) => records.map((r) => (typeof r === "string" ? r : JSON.stringify(r))).join("\n") + "\n";

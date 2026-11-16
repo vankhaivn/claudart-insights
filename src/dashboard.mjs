@@ -1,5 +1,6 @@
 import { readDb } from "./db.mjs";
 import { effortRuns } from "./effort.mjs";
+import { EDGES, POINTS } from "./context.mjs";
 import { EFFORTS, effortOrder, loadRows } from "./usage.mjs";
 
 const round = (n, d = 6) => Math.round(n * 10 ** d) / 10 ** d;
@@ -25,6 +26,14 @@ export function dashboardData(db, config, now = new Date()) {
     subagents: rows.subagents.map((a) => ({ ...a, type: types.indexOf(a.type) })),
     tools: rows.tools.map(shortToolNames),
     skills: rows.skills, skillSources: rows.skillSources,
+    // One row per compaction: session, day, model, effort, subagent, auto (1), manual (0) or unknown (null), context before,
+    // summary tokens, wait (ms), context of the next request, its order on the thread, requests and owner turns to the next one
+    // (null for the last), requests after the last one (null otherwise), the summary request's cost and the rewrite after it.
+    compactions: rows.compactions.map((x) => [x.s, x.d, x.m, ei(x.e), x.sub, x.auto, x.pre, x.post, x.wait, x.kept, x.nth, x.next, x.turns, x.tail, x.sum === null ? null : round(x.sum), round(x.rb)]),
+    // Per session, day, model and effort: the cost of reading the context per size bucket (plus a last part with no
+    // request), requests per bucket, and the replay as compactions, reading, compacting and idle rebuilds per point.
+    context: rows.context.map((x) => [x.s, x.d, x.m, ei(x.e), x.b.map((v) => round(v)), x.n, x.r && x.r.map((v) => round(v, 4))]),
+    edges: EDGES, points: POINTS, fires: rows.levels,
   };
 }
 
